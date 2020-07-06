@@ -23,6 +23,38 @@ def _simple_critic_net(input_dim):
   model = Model(inputs=state, outputs=q_val)
   return model
 
+def _twolayer_mlp_actor_net(input_dim, output_dim):
+  state = Input(shape=input_dim)
+
+  dense1 = Dense(64, activation='relu')(state)
+  dense2 = Dense(64, activation='relu')(dense1)
+  action_mu = Dense(output_dim, activation='tanh')(dense2)
+  action_sig = Dense(output_dim, activation='softplus')(dense2)
+
+  return Model(inputs=state, outputs=[action_mu, action_sig])
+
+def _twolayer_mlp_policy_net(input_dim, output_dim):
+  state = Input(shape=input_dim)
+
+  dense1 = Dense(64, activation='relu')(state)
+  dense2 = Dense(64, activation='relu')(dense1)
+  dense3 = Dense(32, activation='relu')(dense2)
+  action_mu = Dense(output_dim, activation='tanh')(dense3)
+  action_sig = Dense(output_dim, activation='softplus')(dense3)
+  q_val = Dense(1, activation='linear')(dense3)
+
+  return Model(inputs=state, outputs=[action_mu, action_sig, q_val])
+
+def _twolayer_mlp_critic_net(input_dim):
+  state = Input(shape=input_dim)
+    
+  dense1 = Dense(64, activation='relu')(state)
+  dense2 = Dense(64, activation='relu')(dense1)
+  q_val = Dense(1, activation='tanh')(dense2)
+    
+  model = Model(inputs=state, outputs=q_val)
+  return model
+
 def _super_simple_actor_net(input_dim, output_dim):
   state = Input(shape=input_dim)
 
