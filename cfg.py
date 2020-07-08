@@ -4,7 +4,7 @@ from ContCartpoalEnv import ContinuousCartPoleEnv
 from ReachingDotEnv import ReachingDotEnv
 import gym
 import os, sys
-# from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 sys.path.append('../SimulationFramework/simulation/src/gym_envs//mujoco/')
 from gym_envs.mujoco.reach_env import ReachEnv
@@ -83,20 +83,19 @@ cont_ppo_testnormal_cfg = {
 
   'rollout_episodes' : 5,
   'total_episodes' : 5000,
-  'print_intervall' : 20,
-  'rollout_steps' : 64
+  'print_interval' : 20,
 }
 
 cont_ppo_test_cfg = {
   # ACTOR
   'actor_model' : _twolayer_mlp_policy_net,
   'alpha_actor' : 1e-4,             # learning rate actor
-  'actor_epochs' : 8,               #
+  'actor_epochs' : 3,               #
   'actor_batchsize' : 32,
   'actor_shuffle' : False,
   
   # CRITIC
-  'alpha_critic' : 1e-4,            # learning rate critic
+  'alpha_critic' : 3e-4,            # learning rate critic
   'critic_epochs' : 5,
   'critic_shuffle' : False,
   'critic_batchsize' : 32,
@@ -112,13 +111,19 @@ cont_ppo_test_cfg = {
   
   
   # ENVIRONMENT / TRAINING
+  #'environment' : gym.make('Reacher-v2'),
   'environment' : ContinuousCartPoleEnv(),
+  #'environment' : VecNormalize(DummyVecEnv([lambda: gym.make('InvertedPendulum-v2')]), norm_obs=True, norm_reward=True,
+  #                 clip_obs=10.),
   'num_stab' : 1e-10,   # value for numeric stabilization of div/log
 
   'rollout_episodes' : 5,
   'total_episodes' : 5000,
-  'print_intervall' : 20,
-  'rollout_steps' : 64
+  'print_interval' : 20,
+  'rollout_steps' : 64,
+  
+  'total_steps' : 1000000,
+  'rollout' : 128
 }
 # cont_ppo_reachdot_cfg = {
 #   # ACTOR

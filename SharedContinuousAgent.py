@@ -80,8 +80,8 @@ class Agent(object):
     ret.reverse()
     adv = np.asarray(ret) - q_vals
     
-    #adv = adv - np.mean(adv)
-    #adv = adv / np.std(adv)
+    adv = adv - np.mean(adv)
+    adv = adv / np.std(adv)
     
     return ret, adv
     
@@ -146,7 +146,7 @@ class Agent(object):
           surrogate1 = K.square(batch_y_pred_qval - batch_y_true_returns)
           surrogate2 = K.square(clipped_qval - batch_y_true_returns)
 
-          qval_loss = - K.mean(K.minimum(surrogate1, surrogate2))
+          qval_loss =  K.mean(K.minimum(surrogate1, surrogate2))
           
           loss = ppo_clip_loss + entropy_loss_norm_pdf + 0.001 * qval_loss
           
@@ -155,10 +155,11 @@ class Agent(object):
         batch_y_pred_qval_prev = batch_y_pred_qval
         
         gradient = tape.gradient(loss, self.actor.trainable_variables)
+        gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
         self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
     return loss_total / (batches_amt + 1)
 
-  def train_agent(self):
+  def train(self):
     # calculate returns and advantages
     returns, advantages = self._calculate_gae(self.q_value_memory, self.reward_memory, self.not_done_memory)
     
@@ -189,10 +190,41 @@ class Agent(object):
   def save(self):
     pass
 
-  def run(self):
-    PRINT_INTERVALL, scores = self.cfg['print_intervall'], []
-    EPISODES, ROLLOUT_EPISODES = self.cfg['total_episodes'], self.cfg['rollout_episodes']
+  def learn(self):
+
+    scores, episode = [], 0
+
+    s, ep_score, done = self.env.reset(), 0, False
+    for step in range(self.cfg['total_steps']):
+      # choose and take an action, advance environment and store data
+      self.env.render()
+      a, a_dist = self.actor_choose(s)
+      s_, r, done, _ = self.env.step(a)
+      ep_score += r
+      v_est = self.critic_evaluate(s)
+      self.store_transition(s, a, a_dist, r, v_est, not done)
+      s = s_
+      
+      # resetting environment if instance is terminated
+      if done:
+        scores.append(ep_score)
+        print(f'Episode {episode}, Score {ep_score}')
+        
+        if episode % self.cfg['print_interval'] == 0:
+          print(f"Mean - Episode {episode}, Score {np.mean(scores[-self.cfg['print_interval']:])}")
+        
+        s, ep_score, done = self.env.reset(), 0, False
+        episode += 1
+
+      if step % self.cfg['rollout'] == 0:
+        agent.train()
+
+    """
+    EPISODES = self.cfg['total_episodes']
+    PRINT_INTERVALL = self.cfg['print_interval']
+    ROLLOUT_EPISODES = self.cfg['rollout_episodes']
     
+    scores = []
     for episode in range(EPISODES):
       s, ep_score, done = self.env.reset(), 0, False
       
@@ -212,13 +244,13 @@ class Agent(object):
       if episode % PRINT_INTERVALL == 0:
         print(f'Mean - Episode {episode}, Score {np.mean(scores[-PRINT_INTERVALL:])}')
 
-      if episode % ROLLOUT_EPISODES:
-        agent.train_agent()
-
+      if episode % ROLLOUT_EPISODES == 0:
+        agent.train()
+    """
 """ ******************************************************************************** """
 
 if __name__ == "__main__":
   agt_cfg = cfg.cont_ppo_test_cfg
   agent = Agent(cfg=agt_cfg)
 
-  agent.run()
+  agent.learn()
