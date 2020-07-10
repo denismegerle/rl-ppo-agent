@@ -8,7 +8,7 @@ import copy
 class ReachingDotEnv(gym.Env):
   metadata = { 'render.modes' : ['rgb_array'] }
   
-  def __init__(self):
+  def __init__(self, seed=None):
     super(ReachingDotEnv, self).__init__()
     
     # ENV PARAMETERS
@@ -28,7 +28,7 @@ class ReachingDotEnv(gym.Env):
                                    shape=(2,))
     seed, self.viewer = None, None
 
-    self.seed()
+    self.seed(seed)
     self.np_random, _ = seeding.np_random(seed)
     self.reset()
 

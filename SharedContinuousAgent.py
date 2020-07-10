@@ -11,15 +11,9 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from functools import reduce
 import tensorflow.keras.backend as K
 import math, random, cfg
-
-
-"""
-
-TODO
-* save model, checkpoints, ...
-* cb tensorflow tensorboard
-
-"""
+from scipy.signal import lfilter
+import pickle as pkl
+from scipy import io as scio
 
 
 class Agent(object):
@@ -40,7 +34,8 @@ class Agent(object):
   def _reset_memory(self):
     self.state_memory, self.not_done_memory = [], []
     self.action_memory, self.action_dist_memory = [], []
-    self.reward_memory, self.q_value_memory = [], []
+    self.reward_memory, self.v_est_memory = [], []
+    self.last_vest_buffer = 0.0
     
   def _build_policy_network(self, input_dim, output_dim):
     model = self.cfg['actor_model'](input_dim, output_dim)
@@ -56,34 +51,30 @@ class Agent(object):
     return action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
-    _, _, q_val = self.actor(K.expand_dims(state, axis=0))
-    return q_val
+    _, _, v_est = self.actor(K.expand_dims(state, axis=0))
+    return v_est
 
-  def store_transition(self, state, action, action_dist, reward, q_value, not_done):
+  def store_transition(self, state, action, action_dist, reward, v_est, not_done):
     self.state_memory.append(state)
     self.action_memory.append(action)
     self.action_dist_memory.append(action_dist)
     self.reward_memory.append(reward)
-    self.q_value_memory.append(q_value)
+    self.v_est_memory.append(v_est)
     self.not_done_memory.append(not_done)
 
-  def _calculate_gae(self, q_vals, rews, not_dones):
-    ret, gae = [], 0
+  def _calculate_gae(self, v_ests, rews, not_dones):
+    def discount(x, gamma):
+      return lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
     
-    q_vals.append(0.0)
-    for i in reversed(range(len(rews))):
-      delta = rews[i] + self.cfg['gae_gamma'] * q_vals[i + 1] * not_dones[i] - q_vals[i]
-      gae = delta + self.cfg['gae_gamma'] * self.cfg['gae_lambda'] * gae * not_dones[i]
-      ret.append(gae + q_vals[i])
-    q_vals = q_vals[:-1]
+    vests, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(not_dones)
+
+    deltas = rews + self.cfg['gae_gamma'] * vests[1:] * notdones - vests[:-1]
+    advs = discount(deltas, self.cfg['gae_gamma'] * self.cfg['gae_lambda'])
     
-    ret.reverse()
-    adv = np.asarray(ret) - q_vals
+    qvals = advs + vests[:-1]
+    advs = (advs - advs.mean()) / np.maximum(advs.std(), self.cfg['num_stab'])
     
-    adv = adv - np.mean(adv)
-    adv = adv / np.std(adv)
-    
-    return ret, adv
+    return qvals, advs
     
   def _norm_pdf(self, x, mu, sig):
     var = tf.cast(K.square(sig), tf.float32)
@@ -109,11 +100,11 @@ class Agent(object):
     y_true_actions = self.action_memory
     y_true_returns = returns
     
-    loss_total = 0
+    loss_total, vest_loss_total, ppo_loss_total = 0, 0, 0
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
     
-    batch_y_pred_qval_prev = np.zeros(shape=(self.cfg['actor_batchsize'], 1))
+    batch_y_pred_vest_prev = np.zeros(shape=(self.cfg['actor_batchsize'], 1))
     
     for _ in range(self.cfg['actor_epochs']):
       for i in range(batches_amt):
@@ -133,68 +124,50 @@ class Agent(object):
         batch_action_sig = [x[1] for x in batch_action_dist]
         
         with tf.GradientTape() as tape:
-          batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_qval = self.actor(batch_states)
+          batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_vest = self.actor(batch_states)
           
           pi_new = self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig)
           pi_old = self._norm_pdf(batch_y_true_actions, batch_action_mu, batch_action_sig)
           
           ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
           entropy_loss_norm_pdf = self._entropy_norm_pdf(batch_action_sig) * self.cfg['ppo_entropy_factor']
-          
-          clipped_qval = K.clip(batch_y_pred_qval, min_value=batch_y_pred_qval_prev - self.cfg['qval_clip'], max_value=batch_y_pred_qval_prev + self.cfg['qval_clip'])
 
-          surrogate1 = K.square(batch_y_pred_qval - batch_y_true_returns)
-          surrogate2 = K.square(clipped_qval - batch_y_true_returns)
+          clipped_vest = K.clip(batch_y_pred_vest, min_value=batch_y_pred_vest_prev - self.cfg['vest_clip'], max_value=batch_y_pred_vest_prev + self.cfg['vest_clip'])
 
-          qval_loss =  K.mean(K.minimum(surrogate1, surrogate2))
+          surrogate1 = K.square(batch_y_pred_vest - batch_y_true_returns)
+          surrogate2 = K.square(clipped_vest - batch_y_true_returns)
+
+          vest_loss = K.mean(K.minimum(surrogate1, surrogate2))
           
-          loss = ppo_clip_loss + entropy_loss_norm_pdf + 0.001 * qval_loss
+          loss = ppo_clip_loss + entropy_loss_norm_pdf + 0.5 * vest_loss
           
+          ppo_loss_total += ppo_clip_loss
+          vest_loss_total += vest_loss
           loss_total += loss
         
-        batch_y_pred_qval_prev = batch_y_pred_qval
+        batch_y_pred_vest_prev = batch_y_pred_vest
         
         gradient = tape.gradient(loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
         self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
-    return loss_total / (batches_amt + 1)
+    return loss_total / (batches_amt * self.cfg['actor_epochs']), ppo_loss_total / (batches_amt * self.cfg['actor_epochs']), vest_loss_total / (batches_amt * self.cfg['actor_epochs'])
 
   def train(self):
     # calculate returns and advantages
-    returns, advantages = self._calculate_gae(self.q_value_memory, self.reward_memory, self.not_done_memory)
+    returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
+    returns = returns / np.max(np.abs(returns))
+    advantages = advantages / np.max(np.abs(advantages))
     
-    avg_actor_loss = self._train(returns, advantages)
+    avg_actor_loss, avg_ppo_loss, avg_vest_loss = self._train(returns, advantages)
     
     self._reset_memory()
 
-    return avg_actor_loss
-
-  def _test_run(self):
-    s, ep_score, done = self.env.reset(), 0, False
-    
-    print('Starting test run ...')
-    while not done:
-      # self.env.render()
-      a, _ = self.actor_choose(s)
-      s_, r, done, _ = self.env.step(a)
-      ep_score += r
-      _ = self.critic_evaluate(s)
-      s = s_  
-    print('Ending test run ...')
-    return ep_score
-  
-  def test(self):
-    avg_reward = np.mean([self._test_run() for _ in range(5)])
-    print(f'Test returned avg reward of {avg_reward} over {5} runs')
-  
-  def save(self):
-    pass
+    return avg_actor_loss, avg_ppo_loss, avg_vest_loss
 
   def learn(self):
-
-    scores, episode = [], 0
-
-    s, ep_score, done = self.env.reset(), 0, False
+    scores, losses, episode = [], {'total' : {'x' : [], 'y' : []}, 'ppo' : {'x' : [], 'y' : []}, 'vest' : {'x' : [], 'y' : []}}, 0
+    s, ep_score, done = self.env.reset(), 0, True
+    
     for step in range(self.cfg['total_steps']):
       # choose and take an action, advance environment and store data
       self.env.render()
@@ -216,41 +189,31 @@ class Agent(object):
         s, ep_score, done = self.env.reset(), 0, False
         episode += 1
 
-      if step % self.cfg['rollout'] == 0:
-        agent.train()
-
-    """
-    EPISODES = self.cfg['total_episodes']
-    PRINT_INTERVALL = self.cfg['print_interval']
-    ROLLOUT_EPISODES = self.cfg['rollout_episodes']
-    
-    scores = []
-    for episode in range(EPISODES):
-      s, ep_score, done = self.env.reset(), 0, False
-      
-      while not done: 
-        # self.env.render()
-        a, a_dist = self.actor_choose(s)
-        s_, r, done, _ = self.env.step(a)
-        ep_score += r
-        q_val = self.critic_evaluate(s)
-        self.store_transition(s, a, a_dist, r, q_val, not done)
-        s = s_
-
-      scores.append(ep_score)
-
-      print(f'Episode {episode}, Score {ep_score}')
-      
-      if episode % PRINT_INTERVALL == 0:
-        print(f'Mean - Episode {episode}, Score {np.mean(scores[-PRINT_INTERVALL:])}')
-
-      if episode % ROLLOUT_EPISODES == 0:
-        agent.train()
-    """
+      if step % self.cfg['rollout'] == 0 and step > 0:
+        self.last_vest_buffer = self.critic_evaluate(s_)
+        loss_total, ppo_loss, vest_loss = agent.train()
+        print(f'train agent (v_est_loss) at step {step} = {vest_loss}')
+        
+        losses['total']['x'].append(step)
+        losses['ppo']['x'].append(step)
+        losses['vest']['x'].append(step)
+        
+        losses['total']['y'].append(loss_total)
+        losses['ppo']['y'].append(ppo_loss)
+        losses['vest']['y'].append(vest_loss)
+        
+        if episode >= 3000:
+          scio.savemat('losses_total.mat', losses['total'])
+          scio.savemat('losses_ppo.mat', losses['ppo'])
+          scio.savemat('losses_vest.mat', losses['vest'])
+          scio.savemat('epscores.mat', {'x' : [i for i in range(len(scores))], 'y' : scores})
 """ ******************************************************************************** """
 
 if __name__ == "__main__":
-  agt_cfg = cfg.cont_ppo_test_cfg
+  tf.random.set_seed(1)
+  np.random.seed(1)
+  
+  agt_cfg = cfg.cont_ppo_test_cartpole_cfg
   agent = Agent(cfg=agt_cfg)
 
   agent.learn()
