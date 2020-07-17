@@ -14,7 +14,8 @@ import math, random, cfg
 from scipy.signal import lfilter
 import pickle as pkl
 from scipy import io as scio
-
+from itertools import accumulate
+from _utils import npscanr
 
 class Agent(object):
   
@@ -46,7 +47,7 @@ class Agent(object):
     a_mu, a_sig, _ = self.actor(K.expand_dims(state, axis=0))
     action = np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None)
     action = np.clip(action, -1.0, 1.0)
-    #action = self.cfg['environment'].action_space.low + ((action + 1.0) / 2.0) * (self.cfg['environment'].action_space.high - self.cfg['environment'].action_space.low)
+    action = self.cfg['environment'].action_space.low + ((action + 1.0) / 2.0) * (self.cfg['environment'].action_space.high - self.cfg['environment'].action_space.low)
     #action = np.clip(action, self.cfg['environment'].action_space.low, self.cfg['environment'].action_space.high)
     return action, [a_mu[0], a_sig[0]]
   
@@ -62,19 +63,27 @@ class Agent(object):
     self.v_est_memory.append(v_est)
     self.not_done_memory.append(not_done)
 
-  def _calculate_gae(self, v_ests, rews, not_dones):
-    def discount(x, gamma):
-      return lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+  def _calculate_gae(self, v_ests, rewards, not_dones):
+    vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
     
-    vests, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(not_dones)
+    # calculate actual returns (discounted rewards) based on observation
+    def discounted_return_fn(accumulated_discounted_reward, reward_discount):
+      reward, discount = reward_discount
+      return accumulated_discounted_reward * discount + reward
+    
+    discounts = self.cfg['gae_gamma'] * notdones
+    returns = npscanr(discounted_return_fn, self.last_vest_buffer, list(zip(rews, discounts)))
 
-    deltas = rews + self.cfg['gae_gamma'] * vests[1:] * notdones - vests[:-1]
-    advs = discount(deltas, self.cfg['gae_gamma'] * self.cfg['gae_lambda'])
+    # calculate actual advantages based on td residual (see gae paper)  -> TODO check whether this is correct
+    def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
+      weighted_discount, td = weights_td_tuple
+      return td + weighted_discount * accumulated_td
     
-    qvals = advs + vests[:-1]
-    advs = (advs - advs.mean()) / np.maximum(advs.std(), self.cfg['num_stab'])
+    deltas = rews + discounts * vests[1:] - vests[:-1]
+    advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
+    #advantages = (advantages - advantages.mean()) / np.maximum(advantages.std(), self.cfg['num_stab'])
     
-    return qvals, advs
+    return returns, advantages
     
   def _norm_pdf(self, x, mu, sig):
     var = tf.cast(K.square(sig), tf.float32)
@@ -126,8 +135,9 @@ class Agent(object):
         with tf.GradientTape() as tape:
           batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_vest = self.actor(batch_states)
           
-          pi_new = self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig)
-          pi_old = self._norm_pdf(batch_y_true_actions, batch_action_mu, batch_action_sig)
+          # in case of multiple actions p(a_0, ..., a_N) = p(a_0) * ... * p(a_N)
+          pi_new = K.prod(self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig), axis=1)
+          pi_old = K.prod(self._norm_pdf(batch_y_true_actions, batch_action_mu, batch_action_sig), axis=1)
           
           ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
           entropy_loss_norm_pdf = self._entropy_norm_pdf(batch_action_sig) * self.cfg['ppo_entropy_factor']
@@ -155,8 +165,6 @@ class Agent(object):
   def train(self):
     # calculate returns and advantages
     returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
-    returns = returns / np.max(np.abs(returns))
-    advantages = advantages / np.max(np.abs(advantages))
     
     avg_actor_loss, avg_ppo_loss, avg_vest_loss = self._train(returns, advantages)
     
@@ -170,7 +178,7 @@ class Agent(object):
     
     for step in range(self.cfg['total_steps']):
       # choose and take an action, advance environment and store data
-      self.env.render()
+      # self.env.render()
       a, a_dist = self.actor_choose(s)
       s_, r, done, _ = self.env.step(a)
       ep_score += r
@@ -202,7 +210,7 @@ class Agent(object):
         losses['ppo']['y'].append(ppo_loss)
         losses['vest']['y'].append(vest_loss)
         
-        if episode >= 3000:
+        if step >= 10000:
           scio.savemat('losses_total.mat', losses['total'])
           scio.savemat('losses_ppo.mat', losses['ppo'])
           scio.savemat('losses_vest.mat', losses['vest'])
@@ -213,7 +221,7 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = cfg.cont_ppo_test_cartpole_cfg
+  agt_cfg = cfg.cont_ppo_test_cfg
   agent = Agent(cfg=agt_cfg)
 
   agent.learn()

@@ -41,6 +41,18 @@ def _twolayer_mlp_policy_net(input_dim, output_dim):
   dense3 = Dense(32, activation='tanh')(dense2)
   action_mu = Dense(output_dim, activation='tanh')(dense2)
   action_sig = Dense(output_dim, activation='softplus')(dense2)
+  v_est = Dense(1, activation='linear')(dense3)
+
+  return Model(inputs=state, outputs=[action_mu, action_sig, v_est])
+
+def _twolayer_complex_mlp_policy_net(input_dim, output_dim):
+  state = Input(shape=input_dim)
+
+  dense1 = Dense(128, activation='tanh')(state)
+  dense2 = Dense(128, activation='tanh')(dense1)
+  dense3 = Dense(64, activation='tanh')(dense2)
+  action_mu = Dense(output_dim, activation='tanh')(dense2)
+  action_sig = Dense(output_dim, activation='softplus')(dense2)
   v_est = Dense(1, activation='tanh')(dense3)
 
   return Model(inputs=state, outputs=[action_mu, action_sig, v_est])
