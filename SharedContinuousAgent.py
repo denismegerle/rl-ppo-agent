@@ -16,6 +16,7 @@ import pickle as pkl
 from scipy import io as scio
 from itertools import accumulate
 from _utils import npscanr
+import datetime
 
 class Agent(object):
   
@@ -31,6 +32,12 @@ class Agent(object):
 
     # memory
     self._reset_memory()
+    
+    # TENSORBOARD metrics and writers
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
+    self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+    self.tb_total_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
 
   def _reset_memory(self):
     self.state_memory, self.not_done_memory = [], []
@@ -154,6 +161,7 @@ class Agent(object):
           ppo_loss_total += ppo_clip_loss
           vest_loss_total += vest_loss
           loss_total += loss
+          self.tb_total_loss(loss)
         
         batch_y_pred_vest_prev = batch_y_pred_vest
         
@@ -200,6 +208,11 @@ class Agent(object):
       if step % self.cfg['rollout'] == 0 and step > 0:
         self.last_vest_buffer = self.critic_evaluate(s_)
         loss_total, ppo_loss, vest_loss = agent.train()
+        
+        # TENSORBOARD LOG
+        with self.train_summary_writer.as_default():
+          tf.summary.scalar('loss', self.tb_total_loss.result(), step=step)
+        self.tb_total_loss.reset_states()
         print(f'train agent (v_est_loss) at step {step} = {vest_loss}')
         
         losses['total']['x'].append(step)

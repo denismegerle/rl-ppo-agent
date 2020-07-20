@@ -1,5 +1,6 @@
 import gym, os, sys
 import numpy as np
+import tensorflow as tf
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
@@ -32,12 +33,15 @@ class RewardCallback(BaseCallback):
         return True
 """      
 
-env = DummyVecEnv([lambda: ContinuousCartPoleEnv()])
+net_arch = [dict(pi=[128, 128, 128], vf=[128, 128, 128])]
+policy_kwargs = dict(net_arch=net_arch)
+
+env = DummyVecEnv([lambda: ReachEnv(render=True)])
 # Automatically normalize the input features and reward
 env = VecNormalize(env, norm_obs=True, norm_reward=True,
                    clip_obs=10.)
 
-model = PPO('MlpPolicy', ContinuousCartPoleEnv(), verbose=1)
+model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=1)
 model.learn(total_timesteps=1000000)
 
 # Enjoy trained agent

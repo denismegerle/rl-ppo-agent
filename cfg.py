@@ -160,7 +160,7 @@ cont_ppo_test_cfg = {
   'rollout_steps' : 64,
   
   'total_steps' : 1000000,
-  'rollout' : 64
+  'rollout' : 2048
 }
 cont_ppo_test_reachenv_cfg = {
   # ACTOR
