@@ -148,8 +148,8 @@ cont_ppo_test_cfg = {
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(max_steps=2048, control='ik', render=True, randomize_objects=False),
-  'environment' : ContinuousCartPoleEnv(seed=1),
-  #'environment' : ReachingDotEnv(seed=1),
+  #'environment' : ContinuousCartPoleEnv(seed=1),
+  'environment' : ReachingDotEnv(seed=1),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,
   #                 clip_obs=10.),
   'num_stab' : 1e-10,   # value for numeric stabilization of div/log
@@ -160,7 +160,7 @@ cont_ppo_test_cfg = {
   'rollout_steps' : 64,
   
   'total_steps' : 1000000,
-  'rollout' : 2048
+  'rollout' : 64
 }
 cont_ppo_test_reachenv_cfg = {
   # ACTOR

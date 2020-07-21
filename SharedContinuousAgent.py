@@ -120,7 +120,7 @@ class Agent(object):
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
     
-    batch_y_pred_vest_prev = np.zeros(shape=(self.cfg['actor_batchsize'], 1))
+    _, _, y_pred_vest_old = self.actor(np.asarray(self.state_memory))
     
     for _ in range(self.cfg['actor_epochs']):
       for i in range(batches_amt):
@@ -135,9 +135,11 @@ class Agent(object):
         batch_y_true_actions = np.asarray([y_true_actions[i] for i in sample_idx])
         batch_y_true_returns = np.asarray([y_true_returns[i] for i in sample_idx])
         batch_advantage = np.asarray([advantages[i] for i in sample_idx])
+        batch_y_pred_vest_old = np.asarray([y_pred_vest_old[i] for i in sample_idx])
         
         batch_action_mu = [x[0] for x in batch_action_dist]
         batch_action_sig = [x[1] for x in batch_action_dist]
+        
         
         with tf.GradientTape() as tape:
           batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_vest = self.actor(batch_states)
@@ -149,7 +151,7 @@ class Agent(object):
           ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
           entropy_loss_norm_pdf = self._entropy_norm_pdf(batch_action_sig) * self.cfg['ppo_entropy_factor']
 
-          clipped_vest = K.clip(batch_y_pred_vest, min_value=batch_y_pred_vest_prev - self.cfg['vest_clip'], max_value=batch_y_pred_vest_prev + self.cfg['vest_clip'])
+          clipped_vest = K.clip(batch_y_pred_vest, min_value=batch_y_pred_vest_old - self.cfg['vest_clip'], max_value=batch_y_pred_vest_old + self.cfg['vest_clip'])
 
           surrogate1 = K.square(batch_y_pred_vest - batch_y_true_returns)
           surrogate2 = K.square(clipped_vest - batch_y_true_returns)
@@ -162,8 +164,6 @@ class Agent(object):
           vest_loss_total += vest_loss
           loss_total += loss
           self.tb_total_loss(loss)
-        
-        batch_y_pred_vest_prev = batch_y_pred_vest
         
         gradient = tape.gradient(loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
