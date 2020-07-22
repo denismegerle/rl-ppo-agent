@@ -36,8 +36,8 @@ def _twolayer_mlp_actor_net(input_dim, output_dim):
 def _twolayer_mlp_policy_net(input_dim, output_dim):
   state = Input(shape=input_dim)
 
-  dense1 = Dense(64, activation='tanh')(state)
-  dense2 = Dense(64, activation='tanh')(dense1)
+  dense1 = Dense(200, activation='tanh')(state)
+  dense2 = Dense(100, activation='tanh')(dense1)
   dense3 = Dense(64, activation='tanh')(dense2)
   action_mu = Dense(output_dim, activation='tanh')(dense2)
   action_sig = Dense(output_dim, activation='softplus')(dense2)

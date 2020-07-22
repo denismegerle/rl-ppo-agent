@@ -30,14 +30,24 @@ class Agent(object):
     self.actor_optimizer = Adam(self.cfg['alpha_actor'])
     self.actor = self._build_policy_network(self.input_dim, self.n_actions)
 
-    # memory
+    ## MEMORY
     self._reset_memory()
     
-    # TENSORBOARD metrics and writers
+    ## TENSORBOARD metrics and writers
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
+    train_log_dir = f"logs/ppoagent/{type(self.env).__name__}/{str(current_time)}"
     self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-    self.tb_total_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
+    
+    # - total loss, value loss, ppo clip loss, clip ratio, entropy loss
+    self.tb_total_loss = tf.keras.metrics.Mean('total_loss', dtype=tf.float32)
+    self.tb_ppo_loss = tf.keras.metrics.Mean('ppo_loss', dtype=tf.float32)
+    self.tb_value_loss = tf.keras.metrics.Mean('value_loss', dtype=tf.float32)
+    self.tb_entropy_loss = tf.keras.metrics.Mean('entropy_loss', dtype=tf.float32)
+    # - average advantage/reward/return
+    
+    # - episode score
+    self.tb_episode_score = tf.keras.metrics.Mean('episode_score', dtype=tf.float32)
+    
 
   def _reset_memory(self):
     self.state_memory, self.not_done_memory = [], []
@@ -55,12 +65,11 @@ class Agent(object):
     action = np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None)
     action = np.clip(action, -1.0, 1.0)
     action = self.cfg['environment'].action_space.low + ((action + 1.0) / 2.0) * (self.cfg['environment'].action_space.high - self.cfg['environment'].action_space.low)
-    #action = np.clip(action, self.cfg['environment'].action_space.low, self.cfg['environment'].action_space.high)
     return action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
     _, _, v_est = self.actor(K.expand_dims(state, axis=0))
-    return v_est
+    return v_est[0]
 
   def store_transition(self, state, action, action_dist, reward, v_est, not_done):
     self.state_memory.append(state)
@@ -88,7 +97,8 @@ class Agent(object):
     
     deltas = rews + discounts * vests[1:] - vests[:-1]
     advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
-    #advantages = (advantages - advantages.mean()) / np.maximum(advantages.std(), self.cfg['num_stab'])
+    if self.cfg['normalize_advantages']:
+      advantages = (advantages - advantages.mean()) / np.maximum(advantages.std(), self.cfg['num_stab'])
     
     return returns, advantages
     
@@ -108,19 +118,25 @@ class Agent(object):
     
     return - K.mean(K.minimum(surrogate1, surrogate2))
   
+  def _value_loss(self, values, values_old, returns):
+    clipped_vest = K.clip(values, min_value=values_old - self.cfg['vest_clip'], max_value=values_old + self.cfg['vest_clip'])
+
+    surrogate1 = K.square(values - returns)
+    surrogate2 = K.square(clipped_vest - returns)
+
+    return K.mean(K.minimum(surrogate1, surrogate2))
+    
   def _entropy_norm_pdf(self, sig):
     entropy_loss = K.log(K.sqrt(2 * math.pi * math.e * K.square(sig)) + self.cfg['num_stab'])
     return - K.mean(entropy_loss)
   
   def _train(self, returns, advantages):
     y_true_actions = self.action_memory
+    y_pred_vest_old = self.v_est_memory
     y_true_returns = returns
     
-    loss_total, vest_loss_total, ppo_loss_total = 0, 0, 0
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
-    
-    _, _, y_pred_vest_old = self.actor(np.asarray(self.state_memory))
     
     for _ in range(self.cfg['actor_epochs']):
       for i in range(batches_amt):
@@ -132,6 +148,7 @@ class Agent(object):
         
         batch_states = np.asarray([self.state_memory[i] for i in sample_idx])
         batch_action_dist = np.asarray([self.action_dist_memory[i] for i in sample_idx])
+        
         batch_y_true_actions = np.asarray([y_true_actions[i] for i in sample_idx])
         batch_y_true_returns = np.asarray([y_true_returns[i] for i in sample_idx])
         batch_advantage = np.asarray([advantages[i] for i in sample_idx])
@@ -140,7 +157,6 @@ class Agent(object):
         batch_action_mu = [x[0] for x in batch_action_dist]
         batch_action_sig = [x[1] for x in batch_action_dist]
         
-        
         with tf.GradientTape() as tape:
           batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_vest = self.actor(batch_states)
           
@@ -148,40 +164,33 @@ class Agent(object):
           pi_new = K.prod(self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig), axis=1)
           pi_old = K.prod(self._norm_pdf(batch_y_true_actions, batch_action_mu, batch_action_sig), axis=1)
           
+          # loss calculation
           ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
-          entropy_loss_norm_pdf = self._entropy_norm_pdf(batch_action_sig) * self.cfg['ppo_entropy_factor']
-
-          clipped_vest = K.clip(batch_y_pred_vest, min_value=batch_y_pred_vest_old - self.cfg['vest_clip'], max_value=batch_y_pred_vest_old + self.cfg['vest_clip'])
-
-          surrogate1 = K.square(batch_y_pred_vest - batch_y_true_returns)
-          surrogate2 = K.square(clipped_vest - batch_y_true_returns)
-
-          vest_loss = K.mean(K.minimum(surrogate1, surrogate2))
+          entropy_loss = self.cfg['ppo_entropy_factor'] * self._entropy_norm_pdf(batch_action_sig)
+          value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
           
-          loss = ppo_clip_loss + entropy_loss_norm_pdf + 0.5 * vest_loss
+          loss = ppo_clip_loss + entropy_loss + value_loss
           
-          ppo_loss_total += ppo_clip_loss
-          vest_loss_total += vest_loss
-          loss_total += loss
+          # tensorboard logging
           self.tb_total_loss(loss)
+          self.tb_ppo_loss(ppo_clip_loss)
+          self.tb_value_loss(value_loss)
+          self.tb_entropy_loss(entropy_loss)
         
         gradient = tape.gradient(loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
         self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
-    return loss_total / (batches_amt * self.cfg['actor_epochs']), ppo_loss_total / (batches_amt * self.cfg['actor_epochs']), vest_loss_total / (batches_amt * self.cfg['actor_epochs'])
-
+        
   def train(self):
     # calculate returns and advantages
     returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
-    avg_actor_loss, avg_ppo_loss, avg_vest_loss = self._train(returns, advantages)
+    self._train(returns, advantages)
     
     self._reset_memory()
 
-    return avg_actor_loss, avg_ppo_loss, avg_vest_loss
-
   def learn(self):
-    scores, losses, episode = [], {'total' : {'x' : [], 'y' : []}, 'ppo' : {'x' : [], 'y' : []}, 'vest' : {'x' : [], 'y' : []}}, 0
+    scores, episode = [], 0
     s, ep_score, done = self.env.reset(), 0, True
     
     for step in range(self.cfg['total_steps']):
@@ -197,6 +206,12 @@ class Agent(object):
       # resetting environment if instance is terminated
       if done:
         scores.append(ep_score)
+        
+        self.tb_episode_score(ep_score)
+        with self.train_summary_writer.as_default():
+          tf.summary.scalar('episode_score', self.tb_episode_score.result(), step=step)
+        self.tb_episode_score.reset_states()
+        
         print(f'Episode {episode}, Score {ep_score}')
         
         if episode % self.cfg['print_interval'] == 0:
@@ -207,27 +222,23 @@ class Agent(object):
 
       if step % self.cfg['rollout'] == 0 and step > 0:
         self.last_vest_buffer = self.critic_evaluate(s_)
-        loss_total, ppo_loss, vest_loss = agent.train()
+        agent.train()
         
         # TENSORBOARD LOG
         with self.train_summary_writer.as_default():
-          tf.summary.scalar('loss', self.tb_total_loss.result(), step=step)
+          tf.summary.scalar('total_loss', self.tb_total_loss.result(), step=step)
+          tf.summary.scalar('ppo_loss', self.tb_ppo_loss.result(), step=step)
+          tf.summary.scalar('value_loss', self.tb_value_loss.result(), step=step)
+          tf.summary.scalar('entropy_loss', self.tb_entropy_loss.result(), step=step)
+
+        vest_loss = self.tb_value_loss.result()
+        
         self.tb_total_loss.reset_states()
+        self.tb_ppo_loss.reset_states()
+        self.tb_value_loss.reset_states()
+        self.tb_entropy_loss.reset_states()
+        
         print(f'train agent (v_est_loss) at step {step} = {vest_loss}')
-        
-        losses['total']['x'].append(step)
-        losses['ppo']['x'].append(step)
-        losses['vest']['x'].append(step)
-        
-        losses['total']['y'].append(loss_total)
-        losses['ppo']['y'].append(ppo_loss)
-        losses['vest']['y'].append(vest_loss)
-        
-        if step >= 10000:
-          scio.savemat('losses_total.mat', losses['total'])
-          scio.savemat('losses_ppo.mat', losses['ppo'])
-          scio.savemat('losses_vest.mat', losses['vest'])
-          scio.savemat('epscores.mat', {'x' : [i for i in range(len(scores))], 'y' : scores})
 """ ******************************************************************************** """
 
 if __name__ == "__main__":
