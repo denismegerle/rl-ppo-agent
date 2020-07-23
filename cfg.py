@@ -6,8 +6,8 @@ import gym
 import os, sys
 #from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-sys.path.append('../SimulationFramework/simulation/src/gym_envs//mujoco/')
-from gym_envs.mujoco.reach_env import ReachEnv
+#sys.path.append('../SimulationFramework/simulation/src/gym_envs//mujoco/')
+#from gym_envs.mujoco.reach_env import ReachEnv
 
 """
 [summary]

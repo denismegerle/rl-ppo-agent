@@ -1,0 +1,25 @@
+TODO:
+-- optimizations:
+- observation clipping and normalization
+- learning rate annealing
+- orth. layer initialization / scale
+- reward scaling
+
+-- logging:
+- log actor / critic loss + l2 loss (and generally the other losses properly too)
+- log average advantage / reward / return too
+- log average gradient norm and clipping factor used
+- remove ep_scores, #episodes variable and scores length / ... instead
+
+-- general:
+- optimizer cfg choosing
+- add l2 loss for value network
+- choose scale or clip action space (and implement scaling with mean + magnitudes)
+- define calculate gae properly, use two fcts or smth (for returns / advantages)
+- remove TODO from calulate gae
+- give _train the variables y_true_actions/returns + y_pred_vest_old IN their parameter
+- 158-167 can we do that more elegant? through some wrapper function and functionals?
+- rename ppo_entropy_factor to entropy_factor
+- add 0.5 from gradient to cfg
+- put distribution stuff in _util !
+- is action rescaling actually implemented properly? since actions range != action_dist range...

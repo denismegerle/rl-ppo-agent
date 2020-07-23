@@ -76,16 +76,12 @@ class Agent(object):
     return action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
-    v_est = self.critic(K.expand_dims(state, axis=0))
-    return v_est[0]
+    return self.critic(K.expand_dims(state, axis=0))[0]
 
   def store_transition(self, state, action, action_dist, reward, v_est, not_done):
-    self.state_memory.append(state)
-    self.action_memory.append(action)
-    self.action_dist_memory.append(action_dist)
-    self.reward_memory.append(reward)
-    self.v_est_memory.append(v_est)
-    self.not_done_memory.append(not_done)
+    self.state_memory.append(state), self.not_done_memory.append(not_done)
+    self.action_memory.append(action), self.action_dist_memory.append(action_dist)
+    self.reward_memory.append(reward), self.v_est_memory.append(v_est)    
 
   def _calculate_gae(self, v_ests, rewards, not_dones):
     vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
