@@ -15,23 +15,31 @@ from scipy.signal import lfilter
 import pickle as pkl
 from scipy import io as scio
 from itertools import accumulate
-from _utils import npscanr
+from _utils import npscanr, NormalizeWrapper
 import datetime
+
+
 
 class Agent(object):
   
   def __init__(self, cfg):
     self.cfg = cfg
-    self.env = self.cfg['environment']
+    self.env = NormalizeWrapper(self.cfg['environment'], 
+                                norm_obs=self.cfg['normalize_observations'], norm_reward=self.cfg['normalize_rewards'],
+                                clip_obs=10., clip_reward=10., 
+                                gamma=0.99, epsilon=1e-8)
     
     self.input_dim = self.env.observation_space.shape
     self.n_actions = self.env.action_space.shape[0]
+
+    self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
+    self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
     
     self.actor_optimizer = Adam(self.cfg['alpha_actor'])
-    self.actor = self._build_policy_network(self.input_dim, self.n_actions)
+    self.actor = self._build_network(self.cfg['actor_model'], self.input_dim, self.n_actions)
 
     self.critic_optimizer = Adam(self.cfg['alpha_critic'])
-    self.critic = self._build_critic_network(self.input_dim, 1)
+    self.critic = self._build_network(self.cfg['critic_model'], self.input_dim, 1)
     
     ## MEMORY
     self._reset_memory()
@@ -58,22 +66,20 @@ class Agent(object):
     self.reward_memory, self.v_est_memory = [], []
     self.last_vest_buffer = 0.0
     
-  def _build_policy_network(self, input_dim, output_dim):
-    model = self.cfg['actor_model'](input_dim, output_dim)
-    model.build(input_shape=input_dim)
-    return model
-  
-  def _build_critic_network(self, input_dim, output_dim):
-    model = self.cfg['critic_model'](input_dim, output_dim)
+  def _build_network(self, network_model, input_dim, output_dim):
+    model = network_model(input_dim, output_dim)
     model.build(input_shape=input_dim)
     return model
   
   def actor_choose(self, state):
     a_mu, a_sig = self.actor(K.expand_dims(state, axis=0))
-    action = np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None)
-    action = np.clip(action, -1.0, 1.0)
-    action = self.cfg['environment'].action_space.low + ((action + 1.0) / 2.0) * (self.cfg['environment'].action_space.high - self.cfg['environment'].action_space.low)
-    return action, [a_mu[0], a_sig[0]]
+    unscaled_action = np.clip(np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None), -1.0, 1.0)
+    
+    if self.cfg['scale_actions']:
+      scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
+    else: scaled_action = unscaled_action
+    
+    return scaled_action, unscaled_action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
     return self.critic(K.expand_dims(state, axis=0))[0]
@@ -94,16 +100,13 @@ class Agent(object):
     discounts = self.cfg['gae_gamma'] * notdones
     returns = npscanr(discounted_return_fn, self.last_vest_buffer, list(zip(rews, discounts)))
 
-    # calculate actual advantages based on td residual (see gae paper)  -> TODO check whether this is correct
+    # calculate actual advantages based on td residual (see gae paper)
     def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
       weighted_discount, td = weights_td_tuple
       return td + weighted_discount * accumulated_td
     
     deltas = rews + discounts * vests[1:] - vests[:-1]
     advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
-    
-    if self.cfg['normalize_advantages']:
-      advantages = (advantages - advantages.mean()) / np.maximum(advantages.std(), self.cfg['num_stab'])
     
     return returns, advantages
     
@@ -162,6 +165,9 @@ class Agent(object):
         batch_action_mu = [x[0] for x in batch_action_dist]
         batch_action_sig = [x[1] for x in batch_action_dist]
         
+        if self.cfg['normalize_advantages']:
+          batch_advantage = (batch_advantage - batch_advantage.mean()) / np.maximum(batch_advantage.std(), self.cfg['num_stab'])
+        
         with tf.GradientTape(persistent=True) as tape:
           batch_y_pred_mu, batch_y_pred_sig = self.actor(batch_states)
           batch_y_pred_vest = self.critic(batch_states)
@@ -193,11 +199,7 @@ class Agent(object):
         
   def train(self):
     # calculate returns and advantages
-    if self.cfg['clip_rewards']:
-      rewards = np.clip(self.reward_memory, *self.cfg['clip_rewards'])
-    else: rewards = self.reward_memory
-    
-    returns, advantages = self._calculate_gae(self.v_est_memory, rewards, self.not_done_memory)
+    returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
     # train agent
     self._train(returns, advantages)
@@ -210,11 +212,11 @@ class Agent(object):
     for step in range(self.cfg['total_steps']):
       # choose and take an action, advance environment and store data
       # self.env.render()
-      a, a_dist = self.actor_choose(s)
-      s_, r, done, _ = self.env.step(a)
+      scaled_a, unscaled_a, a_dist = self.actor_choose(s)   # sa=scaled, ua=unscaled
+      s_, r, done, _ = self.env.step(scaled_a)
       ep_score += r
       v_est = self.critic_evaluate(s)
-      self.store_transition(s, a, a_dist, r, v_est, not done)
+      self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
       s = s_
       
       # resetting environment if instance is terminated

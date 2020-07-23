@@ -1,9 +1,9 @@
 TODO:
 -- optimizations:
+- reward scaling and clipping
 - observation clipping and normalization
 - learning rate annealing
 - orth. layer initialization / scale
-- reward scaling
 
 -- logging:
 - log actor / critic loss + l2 loss (and generally the other losses properly too)
@@ -23,3 +23,8 @@ TODO:
 - add 0.5 from gradient to cfg
 - put distribution stuff in _util !
 - is action rescaling actually implemented properly? since actions range != action_dist range...
+- norm to logpdf maybe
+
+-- rest:
+- costa.sh -> implementation details checken
+- use forced types in parameters dosmth(epsilon: float = 1e-4, ...)

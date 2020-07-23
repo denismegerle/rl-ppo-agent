@@ -229,12 +229,15 @@ cont_ppo_test_split_cfg = {
   'value_loss_factor' : 1.0,        # factor for value loss
   
   # ACTOR_TRAINING
-  'normalize_advantages' : False,
+  'normalize_advantages' : False,     # minibatch advantage normalization
+  'normalize_observations' : False,   # running mean + variance normalization
+  'normalize_rewards' : False,        # running variance normalization
+  'scale_actions' : True,
   'clip_rewards' : (-5, 5),
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
-  'environment' : ContinuousCartPoleEnv(seed=1),
+  'environment' : (lambda : ContinuousCartPoleEnv(seed=1)),
   #'environment' : gym.make('HalfCheetah-v2'),
   #'environment' : ReachingDotEnv(seed=1),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,
