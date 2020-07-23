@@ -67,11 +67,12 @@ class ReachingDotEnv(gym.Env):
       else:
         reward = -1
       
-      #reward = - cur_dist / ((1 / 2) * self.env_size * self.env_size)
+      reward = - cur_dist / (self.env_size)
       
       if cur_dist <= self.reached_thresh:
         reward = 100
         done = True
+        print("Success")
       else:
         done = False
     else:

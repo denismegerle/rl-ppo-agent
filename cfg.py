@@ -126,7 +126,7 @@ cont_ppo_test_cartpole_cfg = {
   'rollout' : 2048
 }
 
-cont_ppo_test_cfg = {
+cont_ppo_test_shared_cfg = {
   # ACTOR
   'actor_model' : _twolayer_mlp_policy_net,
   'alpha_actor' : 3e-4,             # learning rate actor
@@ -191,6 +191,53 @@ cont_ppo_test_reachenv_cfg = {
   #'environment' : ReachEnv(render=True),
   #'environment' : ContinuousCartPoleEnv(seed=1),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ReachEnv(render=True)]), norm_obs=True, norm_reward=True,
+  #                 clip_obs=10.),
+  'num_stab' : 1e-10,   # value for numeric stabilization of div/log
+
+  'rollout_episodes' : 5,
+  'total_episodes' : 5000,
+  'print_interval' : 20,
+  'rollout_steps' : 64,
+  
+  'total_steps' : 1000000,
+  'rollout' : 2048
+}
+
+cont_ppo_test_split_cfg = {
+  # ACTOR
+  'actor_model' : _twolayer_mlp_actor_net,
+  'alpha_actor' : 3e-4,             # learning rate actor
+  'actor_epochs' : 3,               # 5
+  'actor_batchsize' : 64,
+  'actor_shuffle' : False,
+  
+  # CRITIC
+  'critic_model' : _twolayer_mlp_critic_net,
+  'alpha_critic' : 3e-4,            # learning rate critic
+  'critic_epochs' : 10,
+  'critic_shuffle' : False,
+  'critic_batchsize' : 64,
+  
+  # CRITIC
+  'vest_clip' : 0.2,
+  
+  'gae_gamma' : 0.99,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training
+  
+  'ppo_clip' : 0.2,                 # clipping value of ppo
+  'ppo_entropy_factor' : 0.001,     # entropy factor according to ppo paper
+  'value_loss_factor' : 1.0,        # factor for value loss
+  
+  # ACTOR_TRAINING
+  'normalize_advantages' : False,
+  'clip_rewards' : (-5, 5),
+  
+  # ENVIRONMENT / TRAINING
+  #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
+  'environment' : ContinuousCartPoleEnv(seed=1),
+  #'environment' : gym.make('HalfCheetah-v2'),
+  #'environment' : ReachingDotEnv(seed=1),
+  #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,
   #                 clip_obs=10.),
   'num_stab' : 1e-10,   # value for numeric stabilization of div/log
 

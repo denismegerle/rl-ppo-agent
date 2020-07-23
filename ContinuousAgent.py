@@ -30,6 +30,9 @@ class Agent(object):
     self.actor_optimizer = Adam(self.cfg['alpha_actor'])
     self.actor = self._build_policy_network(self.input_dim, self.n_actions)
 
+    self.critic_optimizer = Adam(self.cfg['alpha_critic'])
+    self.critic = self._build_critic_network(self.input_dim, 1)
+    
     ## MEMORY
     self._reset_memory()
     
@@ -60,15 +63,20 @@ class Agent(object):
     model.build(input_shape=input_dim)
     return model
   
+  def _build_critic_network(self, input_dim, output_dim):
+    model = self.cfg['critic_model'](input_dim, output_dim)
+    model.build(input_shape=input_dim)
+    return model
+  
   def actor_choose(self, state):
-    a_mu, a_sig, _ = self.actor(K.expand_dims(state, axis=0))
+    a_mu, a_sig = self.actor(K.expand_dims(state, axis=0))
     action = np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None)
     action = np.clip(action, -1.0, 1.0)
     action = self.cfg['environment'].action_space.low + ((action + 1.0) / 2.0) * (self.cfg['environment'].action_space.high - self.cfg['environment'].action_space.low)
     return action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
-    _, _, v_est = self.actor(K.expand_dims(state, axis=0))
+    v_est = self.critic(K.expand_dims(state, axis=0))
     return v_est[0]
 
   def store_transition(self, state, action, action_dist, reward, v_est, not_done):
@@ -97,6 +105,7 @@ class Agent(object):
     
     deltas = rews + discounts * vests[1:] - vests[:-1]
     advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
+    
     if self.cfg['normalize_advantages']:
       advantages = (advantages - advantages.mean()) / np.maximum(advantages.std(), self.cfg['num_stab'])
     
@@ -157,8 +166,9 @@ class Agent(object):
         batch_action_mu = [x[0] for x in batch_action_dist]
         batch_action_sig = [x[1] for x in batch_action_dist]
         
-        with tf.GradientTape() as tape:
-          batch_y_pred_mu, batch_y_pred_sig, batch_y_pred_vest = self.actor(batch_states)
+        with tf.GradientTape(persistent=True) as tape:
+          batch_y_pred_mu, batch_y_pred_sig = self.actor(batch_states)
+          batch_y_pred_vest = self.critic(batch_states)
           
           # in case of multiple actions p(a_0, ..., a_N) = p(a_0) * ... * p(a_N)
           pi_new = K.prod(self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig), axis=1)
@@ -169,24 +179,32 @@ class Agent(object):
           entropy_loss = self.cfg['ppo_entropy_factor'] * self._entropy_norm_pdf(batch_action_sig)
           value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
           
-          loss = ppo_clip_loss + entropy_loss + value_loss
+          actor_loss = ppo_clip_loss + entropy_loss + value_loss
+          critic_loss = value_loss
           
           # tensorboard logging
-          self.tb_total_loss(loss)
+          self.tb_total_loss(actor_loss)
           self.tb_ppo_loss(ppo_clip_loss)
           self.tb_value_loss(value_loss)
           self.tb_entropy_loss(entropy_loss)
         
-        gradient = tape.gradient(loss, self.actor.trainable_variables)
+        gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
         self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
         
+        gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
+        self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
+        
   def train(self):
     # calculate returns and advantages
-    returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
+    if self.cfg['clip_rewards']:
+      rewards = np.clip(self.reward_memory, *self.cfg['clip_rewards'])
+    else: rewards = self.reward_memory
     
+    returns, advantages = self._calculate_gae(self.v_est_memory, rewards, self.not_done_memory)
+    
+    # train agent
     self._train(returns, advantages)
-    
     self._reset_memory()
 
   def learn(self):
@@ -245,7 +263,7 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = cfg.cont_ppo_test_shared_cfg
+  agt_cfg = cfg.cont_ppo_test_split_cfg
   agent = Agent(cfg=agt_cfg)
 
   agent.learn()
