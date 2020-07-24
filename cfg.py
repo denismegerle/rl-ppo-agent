@@ -35,7 +35,7 @@ cont_ppo_test_split_cfg = {
   'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training
   
   'ppo_clip' : 0.2,                 # clipping value of ppo
-  'ppo_entropy_factor' : 0.001,     # entropy factor according to ppo paper
+  'entropy_factor' : 0.001,     # entropy factor according to ppo paper
   'value_loss_factor' : 1.0,        # factor for value loss
   
   # ACTOR_TRAINING
@@ -46,6 +46,9 @@ cont_ppo_test_split_cfg = {
   'clip_observations' : 10.0,
   'clip_rewards' : 10.0,
   'gamma_env_normalization' : 0.99,
+
+  'actor_regloss_factor' : 1e-4,
+  'critic_regloss_factor' : 1e-4,
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),

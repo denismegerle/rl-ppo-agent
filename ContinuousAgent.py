@@ -133,7 +133,13 @@ class Agent(object):
     surrogate2 = K.square(clipped_vest - returns)
 
     return K.mean(K.minimum(surrogate1, surrogate2))
-    
+  
+  def _reg_loss(self, model):
+    if model.losses:
+      return tf.math.add_n(self.actor.losses)
+    else : return 0.0
+
+
   def _entropy_norm_pdf(self, sig):
     entropy_loss = K.log(K.sqrt(2 * math.pi * math.e * K.square(sig)) + self.cfg['num_stab_pdf'])
     return - K.mean(entropy_loss)
@@ -178,11 +184,13 @@ class Agent(object):
           
           # loss calculation
           ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
-          entropy_loss = self.cfg['ppo_entropy_factor'] * self._entropy_norm_pdf(batch_action_sig)
+          entropy_loss = self.cfg['entropy_factor'] * self._entropy_norm_pdf(batch_action_sig)
           value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
-          
-          actor_loss = ppo_clip_loss + entropy_loss + value_loss
-          critic_loss = value_loss
+          reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
+          reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
+
+          actor_loss = ppo_clip_loss + entropy_loss + value_loss + reg_loss_actor
+          critic_loss = value_loss + reg_loss_critic
           
           # tensorboard logging
           self.tb_total_loss(actor_loss)
