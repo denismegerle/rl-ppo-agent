@@ -1,7 +1,4 @@
 TODO:
--- optimizations:
-- orth. layer initialization / scale
-
 -- logging:
 - log actor / critic loss + l2 loss (and generally the other losses properly too)
 - log average advantage / reward / return too
@@ -28,3 +25,5 @@ TODO:
 - costa.sh -> implementation details checken
 - use forced types in parameters dosmth(epsilon: float = 1e-4, ...)
 - proper naming for envs in tb!
+- pull out all seeds to config such that it's possible to reproduce results exactly
+- document optimizations ... (and give sources of each :))
