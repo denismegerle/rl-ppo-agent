@@ -1,7 +1,5 @@
 TODO:
 -- optimizations:
-- reward scaling and clipping
-- observation clipping and normalization
 - learning rate annealing
 - orth. layer initialization / scale
 
@@ -24,7 +22,9 @@ TODO:
 - put distribution stuff in _util !
 - is action rescaling actually implemented properly? since actions range != action_dist range...
 - norm to logpdf maybe
+- multi environment learning (should be easy with the vecenv...)
 
 -- rest:
 - costa.sh -> implementation details checken
 - use forced types in parameters dosmth(epsilon: float = 1e-4, ...)
+- proper naming for envs in tb!

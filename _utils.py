@@ -40,18 +40,19 @@ class NormalizeWrapper(VecNormalize):
     return super().reset()[0]
   
   def step(self, action):
-    return [x[0] for x in super().step(action)]
+    return [x[0] for x in super().step([action])]
 
 
 class RunningMeanStd(object):
   
-  def __init__(self):
+  def __init__(self, shape=()):
+    self.shape = shape
     self.reset()
   
   def reset(self):
     self.k = 0
-    self.M_k = 0
-    self.S_k = 0
+    self.M_k = np.zeros(self.shape)
+    self.S_k = np.zeros(self.shape)
   
   def update(self, x):
     self.k += 1
@@ -61,4 +62,19 @@ class RunningMeanStd(object):
     
   def __call__(self, x):
     self.update(x)
-    return self.M_k, self.S_k / self.k
+    
+    if self.k == 1:
+      return self.M_k, np.ones(self.shape)
+    else: return self.M_k, self.S_k / self.k
+
+
+  # def _normalize_observations(self, observations, not_dones):
+  #   def func(obs, not_done):
+  #     mean, variance = self.obs_rms(obs)
+  #     if not not_done: self.obs_rms.reset()
+  #     return mean, variance
+    
+  #   mean_vars = map(func, observations, not_dones)
+  #   normalized_observations = map(lambda obs, m_v: (obs - m_v[0]) / np.sqrt(m_v[1] + 1e-4), observations, mean_vars)
+    
+  #   return list(normalized_observations)

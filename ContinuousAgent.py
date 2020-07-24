@@ -15,7 +15,7 @@ from scipy.signal import lfilter
 import pickle as pkl
 from scipy import io as scio
 from itertools import accumulate
-from _utils import npscanr, NormalizeWrapper
+from _utils import npscanr, NormalizeWrapper, RunningMeanStd
 import datetime
 
 
@@ -24,14 +24,14 @@ class Agent(object):
   
   def __init__(self, cfg):
     self.cfg = cfg
-    self.env = NormalizeWrapper(self.cfg['environment'], 
+    self.env = NormalizeWrapper(self.cfg['environment'],
                                 norm_obs=self.cfg['normalize_observations'], norm_reward=self.cfg['normalize_rewards'],
-                                clip_obs=10., clip_reward=10., 
-                                gamma=0.99, epsilon=1e-8)
+                                clip_obs=self.cfg['clip_observations'], clip_reward=self.cfg['clip_rewards'],
+                                gamma=self.cfg['gamma_env_normalization'], epsilon=self.cfg['num_stab_envnorm'])
     
     self.input_dim = self.env.observation_space.shape
     self.n_actions = self.env.action_space.shape[0]
-
+    
     self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
     self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
     
@@ -114,11 +114,11 @@ class Agent(object):
     var = tf.cast(K.square(sig), tf.float32)
     denom = tf.cast(K.sqrt(2 * math.pi * var), tf.float32)
     deviation = tf.cast(K.square(x - mu), tf.float32)
-    expon = - (1 / 2) * deviation / (var + self.cfg['num_stab'])
+    expon = - (1 / 2) * deviation / (var + self.cfg['num_stab_pdf'])
     return (1 / denom) * K.exp(expon)
   
   def _ppo_clip_loss(self, pi_new, pi_old, advantage):
-    ratio = pi_new / (pi_old + self.cfg['num_stab'])
+    ratio = pi_new / (pi_old + self.cfg['num_stab_ppo'])
     clip_ratio = K.clip(ratio, min_value=1 - self.cfg['ppo_clip'], max_value=1 + self.cfg['ppo_clip'])
 
     surrogate1 = ratio * advantage
@@ -135,7 +135,7 @@ class Agent(object):
     return K.mean(K.minimum(surrogate1, surrogate2))
     
   def _entropy_norm_pdf(self, sig):
-    entropy_loss = K.log(K.sqrt(2 * math.pi * math.e * K.square(sig)) + self.cfg['num_stab'])
+    entropy_loss = K.log(K.sqrt(2 * math.pi * math.e * K.square(sig)) + self.cfg['num_stab_pdf'])
     return - K.mean(entropy_loss)
   
   def _train(self, returns, advantages):
@@ -166,7 +166,7 @@ class Agent(object):
         batch_action_sig = [x[1] for x in batch_action_dist]
         
         if self.cfg['normalize_advantages']:
-          batch_advantage = (batch_advantage - batch_advantage.mean()) / np.maximum(batch_advantage.std(), self.cfg['num_stab'])
+          batch_advantage = (batch_advantage - batch_advantage.mean()) / np.maximum(batch_advantage.std(), self.cfg['num_stab_advnorm'])
         
         with tf.GradientTape(persistent=True) as tape:
           batch_y_pred_mu, batch_y_pred_sig = self.actor(batch_states)
@@ -196,7 +196,7 @@ class Agent(object):
         
         gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
-        
+  
   def train(self):
     # calculate returns and advantages
     returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
@@ -214,7 +214,7 @@ class Agent(object):
       # self.env.render()
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)   # sa=scaled, ua=unscaled
       s_, r, done, _ = self.env.step(scaled_a)
-      ep_score += r
+      ep_score += self.env.unnormalize_reward(r)
       v_est = self.critic_evaluate(s)
       self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
       s = s_

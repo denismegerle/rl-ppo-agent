@@ -229,21 +229,26 @@ cont_ppo_test_split_cfg = {
   'value_loss_factor' : 1.0,        # factor for value loss
   
   # ACTOR_TRAINING
-  'normalize_advantages' : False,     # minibatch advantage normalization
-  'normalize_observations' : False,   # running mean + variance normalization
-  'normalize_rewards' : False,        # running variance normalization
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
   'scale_actions' : True,
-  'clip_rewards' : (-5, 5),
+  'clip_observations' : 10.0,
+  'clip_rewards' : 10.0,
+  'gamma_env_normalization' : 0.99,
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
-  'environment' : (lambda : ContinuousCartPoleEnv(seed=1)),
+  'environment' : (lambda : ReachingDotEnv(seed=999)),
   #'environment' : gym.make('HalfCheetah-v2'),
   #'environment' : ReachingDotEnv(seed=1),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,
   #                 clip_obs=10.),
-  'num_stab' : 1e-10,   # value for numeric stabilization of div/log
-
+  'num_stab_ppo' : 1e-10,   # value for numeric stabilization of div/log
+  'num_stab_envnorm' : 1e-8,
+  'num_stab_advnorm' : 1e-10,
+  'num_stab_pdf' : 1e-10,
+  
   'rollout_episodes' : 5,
   'total_episodes' : 5000,
   'print_interval' : 20,
@@ -252,3 +257,5 @@ cont_ppo_test_split_cfg = {
   'total_steps' : 1000000,
   'rollout' : 2048
 }
+
+# info: for continuous rewards normalize advantages, for non continuous (i.e pos good, neg bad, sparse) do not normalize advantages
