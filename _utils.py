@@ -2,6 +2,7 @@ import numpy as np
 
 from functools import reduce
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 
 #################### FUNCTIONALS ####################
 def scan(func, acc, xs):  # implementation of haskell scanl
@@ -78,3 +79,16 @@ class RunningMeanStd(object):
   #   normalized_observations = map(lambda obs, m_v: (obs - m_v[0]) / np.sqrt(m_v[1] + 1e-4), observations, mean_vars)
     
   #   return list(normalized_observations)
+
+class RolloutInverseTimeDecay(InverseTimeDecay):
+  
+  def __init__(self, initial_learning_rate, decay_steps, decay_rate, staircase=False):
+    super(RolloutInverseTimeDecay, self).__init__(initial_learning_rate, decay_steps, decay_rate, staircase, name='RolloutInverseTimeDecay')
+    self.rollout_step = 0
+  
+  def update_rollout_step(self, new_step):
+    assert new_step > 0 and new_step > self.rollout_step, 'invalid new rollout step defined'
+    self.rollout_step = new_step
+    
+  def __call__(self, step):
+    return super().__call__(self.rollout_step)

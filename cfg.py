@@ -4,6 +4,9 @@ from ContCartpoalEnv import ContinuousCartPoleEnv
 from ReachingDotEnv import ReachingDotEnv
 import gym
 import os, sys
+from _utils import RolloutInverseTimeDecay
+
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 #from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 #sys.path.append('../SimulationFramework/simulation/src/gym_envs//mujoco/')
@@ -206,17 +209,19 @@ cont_ppo_test_reachenv_cfg = {
 cont_ppo_test_split_cfg = {
   # ACTOR
   'actor_model' : _twolayer_mlp_actor_net,
-  'alpha_actor' : 3e-4,             # learning rate actor
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 10000, 0.0, staircase=True),             # learning rate actor
   'actor_epochs' : 3,               # 5
   'actor_batchsize' : 64,
   'actor_shuffle' : False,
+  'adam_actor_epsilon' : 1e-5,
   
   # CRITIC
   'critic_model' : _twolayer_mlp_critic_net,
-  'alpha_critic' : 3e-4,            # learning rate critic
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 10000, 0.0, staircase=True),            # learning rate critic
   'critic_epochs' : 10,
   'critic_shuffle' : False,
   'critic_batchsize' : 64,
+  'adam_critic_epsilon' : 1e-5,
   
   # CRITIC
   'vest_clip' : 0.2,
@@ -239,7 +244,7 @@ cont_ppo_test_split_cfg = {
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
-  'environment' : (lambda : ReachingDotEnv(seed=999)),
+  'environment' : (lambda : ReachingDotEnv(seed=777)),
   #'environment' : gym.make('HalfCheetah-v2'),
   #'environment' : ReachingDotEnv(seed=1),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,

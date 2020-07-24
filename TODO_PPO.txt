@@ -1,6 +1,5 @@
 TODO:
 -- optimizations:
-- learning rate annealing
 - orth. layer initialization / scale
 
 -- logging:
@@ -8,6 +7,7 @@ TODO:
 - log average advantage / reward / return too
 - log average gradient norm and clipping factor used
 - remove ep_scores, #episodes variable and scores length / ... instead
+- log current learning rate...
 
 -- general:
 - optimizer cfg choosing

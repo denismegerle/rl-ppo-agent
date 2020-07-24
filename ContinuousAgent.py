@@ -35,10 +35,10 @@ class Agent(object):
     self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
     self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
     
-    self.actor_optimizer = Adam(self.cfg['alpha_actor'])
+    self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
     self.actor = self._build_network(self.cfg['actor_model'], self.input_dim, self.n_actions)
 
-    self.critic_optimizer = Adam(self.cfg['alpha_critic'])
+    self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
     self.critic = self._build_network(self.cfg['critic_model'], self.input_dim, 1)
     
     ## MEMORY
@@ -197,7 +197,7 @@ class Agent(object):
         gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
-  def train(self):
+  def train(self):    
     # calculate returns and advantages
     returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
@@ -237,6 +237,11 @@ class Agent(object):
         episode += 1
 
       if step % self.cfg['rollout'] == 0 and step > 0:
+        self.cfg['adam_actor_alpha'].update_rollout_step(step)
+        self.cfg['adam_critic_alpha'].update_rollout_step(step)
+        
+        print(f'LEARNING RATE IS CURRENTLY: {self.actor_optimizer._decayed_lr(tf.float32)} at step {step}')
+        
         self.last_vest_buffer = self.critic_evaluate(s_)
         agent.train()
         
