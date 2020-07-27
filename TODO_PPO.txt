@@ -1,10 +1,4 @@
 TODO:
--- logging:
-- log actor / critic loss + l2 loss (and generally the other losses properly too)
-- log average advantage / reward / return too
-- log average gradient norm and clipping factor used
-- remove ep_scores, #episodes variable and scores length / ... instead
-- log current learning rate...
 
 -- general:
 - optimizer cfg choosing
@@ -19,6 +13,8 @@ TODO:
 - norm to logpdf maybe
 - multi environment learning (should be easy with the vecenv...)
 - rename cfg vars with naming scheme ( e.g. loss relevant stuff to loss_blablub, etc)
+- make logging iffable
+
 
 -- rest:
 - costa.sh -> implementation details checken
@@ -28,3 +24,9 @@ TODO:
 - document optimizations ... (and give sources of each :))
 - put all losses in the _utils...
 - adjust name of tf run to contain important hyperparams!
+- percent done + estimated time printen, rest über tensorboard...
+- load/save model
+- maybe separate debug log cfg?
+
+temp:
+- what to log: actorloss, criticloss, 

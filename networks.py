@@ -4,6 +4,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.initializers import Constant, Orthogonal
 from tensorflow.keras.regularizers import l2
+import tensorflow as tf
 
 orth_weights_initializer = lambda scale, seed=1 : Orthogonal(gain=scale, seed=seed)
 const_bias_initializer = lambda value : Constant(value=value)

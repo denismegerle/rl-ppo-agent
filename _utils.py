@@ -1,8 +1,11 @@
 import numpy as np
+import tensorflow as tf
 
 from functools import reduce
+import operator
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from tensorflow.keras.optimizers.schedules import InverseTimeDecay
+
 
 #################### FUNCTIONALS ####################
 def scan(func, acc, xs):  # implementation of haskell scanl
@@ -17,6 +20,7 @@ scanl = lambda func, acc, xs: list(scan(func, acc, xs))
 scanr = lambda func, acc, xs: list(scan(func, acc, xs[::-1]))[::-1]
 npscanr = lambda func, acc, xs: np.asarray(scanr(func, acc, xs))
 
+listavg = lambda xs: reduce(operator.add, xs) / len(xs)
 
 #################### ENVIRONMENTS ####################
 
@@ -92,3 +96,21 @@ class RolloutInverseTimeDecay(InverseTimeDecay):
     
   def __call__(self, step):
     return super().__call__(self.rollout_step)
+
+def tb_log_model_graph( summary_writer, keras_model, logdir, name='model_graph', 
+                        show_shapes=True, show_layer_names=True, rankdir='TB',
+                        expand_nested=False, dpi=96):
+  @tf.function
+  def tf_trace(x):
+    return keras_model(x)
+  
+  # tf profiler logging
+  tf.summary.trace_on(graph=True, profiler=True)
+  tf_trace(tf.zeros([1] + list(keras_model.input_shape[1:])))
+  with summary_writer.as_default():
+    tf.summary.trace_export(name=name, step=0, profiler_outdir=logdir)
+  
+  # tf keras utils png plot
+  tf.keras.utils.plot_model(keras_model, to_file=f'{logdir}/{name}.png', 
+                            show_shapes=show_shapes, show_layer_names=show_layer_names,
+                            rankdir=rankdir, expand_nested=expand_nested, dpi=dpi)

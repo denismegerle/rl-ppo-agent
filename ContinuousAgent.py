@@ -15,7 +15,7 @@ from scipy.signal import lfilter
 import pickle as pkl
 from scipy import io as scio
 from itertools import accumulate
-from _utils import npscanr, NormalizeWrapper, RunningMeanStd
+from _utils import npscanr, NormalizeWrapper, RunningMeanStd, tb_log_model_graph, listavg
 import datetime
 
 
@@ -49,15 +49,19 @@ class Agent(object):
     train_log_dir = f"logs/ppoagent/{type(self.env).__name__}/{str(current_time)}"
     self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     
-    # - total loss, value loss, ppo clip loss, clip ratio, entropy loss
-    self.tb_total_loss = tf.keras.metrics.Mean('total_loss', dtype=tf.float32)
-    self.tb_ppo_loss = tf.keras.metrics.Mean('ppo_loss', dtype=tf.float32)
-    self.tb_value_loss = tf.keras.metrics.Mean('value_loss', dtype=tf.float32)
-    self.tb_entropy_loss = tf.keras.metrics.Mean('entropy_loss', dtype=tf.float32)
-    # - average advantage/reward/return
-    
-    # - episode score
-    self.tb_episode_score = tf.keras.metrics.Mean('episode_score', dtype=tf.float32)
+    # logging losses
+    self.tb_actor_loss = tf.keras.metrics.Mean('actor_losses/total_loss', dtype=tf.float32)
+    self.tb_ppo_loss = tf.keras.metrics.Mean('actor_losses/ppo_loss', dtype=tf.float32)
+    self.tb_entropy_loss = tf.keras.metrics.Mean('actor_losses/entropy_loss', dtype=tf.float32)
+    self.tb_actor_regloss = tf.keras.metrics.Mean('actor_losses/reg_loss', dtype=tf.float32)
+
+    self.tb_critic_loss = tf.keras.metrics.Mean('critic_losses/total_loss', dtype=tf.float32)
+    self.tb_value_loss = tf.keras.metrics.Mean('critic_losses/value_loss', dtype=tf.float32)
+    self.tb_critic_regloss = tf.keras.metrics.Mean('critic_losses/reg_loss', dtype=tf.float32)
+
+    if self.cfg['tb_log_graph']:
+      tb_log_model_graph(self.train_summary_writer, self.actor, train_log_dir, 'actor_model')
+      tb_log_model_graph(self.train_summary_writer, self.critic, train_log_dir, 'critic_model')
     
 
   def _reset_memory(self):
@@ -78,7 +82,7 @@ class Agent(object):
     if self.cfg['scale_actions']:
       scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
     else: scaled_action = unscaled_action
-    
+
     return scaled_action, unscaled_action, [a_mu[0], a_sig[0]]
   
   def critic_evaluate(self, state):
@@ -189,14 +193,18 @@ class Agent(object):
           reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
 
-          actor_loss = ppo_clip_loss + entropy_loss + value_loss + reg_loss_actor
+          actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
           critic_loss = value_loss + reg_loss_critic
           
           # tensorboard logging
-          self.tb_total_loss(actor_loss)
+          self.tb_actor_loss(actor_loss)
           self.tb_ppo_loss(ppo_clip_loss)
-          self.tb_value_loss(value_loss)
           self.tb_entropy_loss(entropy_loss)
+          self.tb_actor_regloss(reg_loss_actor)
+
+          self.tb_critic_loss(critic_loss)
+          self.tb_value_loss(value_loss)
+          self.tb_critic_regloss(reg_loss_critic)
         
         gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
@@ -207,67 +215,93 @@ class Agent(object):
   
   def train(self):    
     # calculate returns and advantages
-    returns, advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
+    self.returns, self.advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
     # train agent
-    self._train(returns, advantages)
+    self._train(self.returns, self.advantages)
+    self._log_training()
     self._reset_memory()
 
-  def learn(self):
-    scores, episode = [], 0
-    s, ep_score, done = self.env.reset(), 0, True
+  def _log_training(self):
+    with self.train_summary_writer.as_default():
+      # log losses
+      tf.summary.scalar('actor_losses/total_loss', self.tb_actor_loss.result(), step=self.step)
+      tf.summary.scalar('actor_losses/ppo_loss', self.tb_ppo_loss.result(), step=self.step)
+      tf.summary.scalar('actor_losses/entropy_loss', self.tb_entropy_loss.result(), step=self.step)
+      tf.summary.scalar('actor_losses/reg_loss', self.tb_actor_regloss.result(), step=self.step)
+
+      tf.summary.scalar('critic_losses/total_loss', self.tb_critic_loss.result(), step=self.step)
+      tf.summary.scalar('critic_losses/value_loss', self.tb_value_loss.result(), step=self.step)
+      tf.summary.scalar('critic_losses/reg_loss', self.tb_critic_regloss.result(), step=self.step)
+
+      # log returns and advantages
+      tf.summary.scalar('env_metrics/avg_returns_per_step', np.average(self.returns), step=self.step)
+      tf.summary.scalar('env_metrics/avg_advantages_per_step', np.average(self.advantages), step=self.step)
+      tf.summary.histogram('env_metrics/returns_per_step', self.returns, step=self.step)
+      tf.summary.histogram('env_metrics/advantages_per_step', self.advantages, step=self.step)
+      
+    self.tb_actor_loss.reset_states()
+    self.tb_ppo_loss.reset_states()
+    self.tb_entropy_loss.reset_states()
+    self.tb_actor_regloss.reset_states()
+
+    self.tb_critic_loss.reset_states()
+    self.tb_value_loss.reset_states()
+    self.tb_critic_regloss.reset_states()
+
+  def _log_episode(self, observations, actions, scores, episode, step):
+    epscore = reduce(operator.add, scores)
+    with self.train_summary_writer.as_default():
+      tf.summary.scalar('env_metrics/episode_score_per_step', epscore, step=step)
+      tf.summary.scalar('env_metrics/episode_score_per_episode', epscore, step=episode)
+      tf.summary.histogram('env_metrics/rewards_per_episode', scores, step=episode)
+          
+      # observations logging
+      obs = np.asarray(observations)
+      for i in range(obs.shape[1]):
+        tf.summary.histogram(f'env_metrics_obs/observation_{i}_per_episode', obs[:, i], step=episode)
+          
+      # action logging
+      acts = np.asarray(actions)
+      for i in range(acts.shape[1]):
+        tf.summary.histogram(f'env_metrics_acts/action_{i}_per_episode', acts[:, i], step=episode)
     
-    for step in range(self.cfg['total_steps']):
+    # DEBUG; TODO REMOVE
+    print(f'Episode {episode}, Score {epscore}')
+
+  def learn(self):
+    s, episode, scores, observations, actions, done = self.env.reset(), 0, [], [], [], False
+    
+    for self.step in range(self.cfg['total_steps']):
       # choose and take an action, advance environment and store data
       # self.env.render()
-      scaled_a, unscaled_a, a_dist = self.actor_choose(s)   # sa=scaled, ua=unscaled
+      scaled_a, unscaled_a, a_dist = self.actor_choose(s)
+      observations.append(self.env.unnormalize_obs(s))
+      actions.append(unscaled_a)
       s_, r, done, _ = self.env.step(scaled_a)
-      ep_score += self.env.unnormalize_reward(r)
+      scores.append(self.env.unnormalize_reward(r))
       v_est = self.critic_evaluate(s)
       self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
       s = s_
       
       # resetting environment if instance is terminated
       if done:
-        scores.append(ep_score)
-        
-        self.tb_episode_score(ep_score)
-        with self.train_summary_writer.as_default():
-          tf.summary.scalar('episode_score', self.tb_episode_score.result(), step=step)
-        self.tb_episode_score.reset_states()
-        
-        print(f'Episode {episode}, Score {ep_score}')
-        
-        if episode % self.cfg['print_interval'] == 0:
-          print(f"Mean - Episode {episode}, Score {np.mean(scores[-self.cfg['print_interval']:])}")
-        
-        s, ep_score, done = self.env.reset(), 0, False
+        self._log_episode(observations, actions, scores, episode, self.step)
+        s, scores, observations, actions, done = self.env.reset(), [], [], [], False
         episode += 1
 
-      if step % self.cfg['rollout'] == 0 and step > 0:
-        self.cfg['adam_actor_alpha'].update_rollout_step(step)
-        self.cfg['adam_critic_alpha'].update_rollout_step(step)
+      if self.step % self.cfg['rollout'] == 0 and self.step > 0:
+        self.cfg['adam_actor_alpha'].update_rollout_step(self.step)
+        self.cfg['adam_critic_alpha'].update_rollout_step(self.step)
         
-        print(f'LEARNING RATE IS CURRENTLY: {self.actor_optimizer._decayed_lr(tf.float32)} at step {step}')
+        with self.train_summary_writer.as_default():
+          tf.summary.scalar('optimizer/actor_lr', self.actor_optimizer._decayed_lr(tf.float32), step=self.step)
+          tf.summary.scalar('optimizer/critic_lr', self.critic_optimizer._decayed_lr(tf.float32), step=self.step)
         
         self.last_vest_buffer = self.critic_evaluate(s_)
         agent.train()
         
-        # TENSORBOARD LOG
-        with self.train_summary_writer.as_default():
-          tf.summary.scalar('total_loss', self.tb_total_loss.result(), step=step)
-          tf.summary.scalar('ppo_loss', self.tb_ppo_loss.result(), step=step)
-          tf.summary.scalar('value_loss', self.tb_value_loss.result(), step=step)
-          tf.summary.scalar('entropy_loss', self.tb_entropy_loss.result(), step=step)
-
-        vest_loss = self.tb_value_loss.result()
         
-        self.tb_total_loss.reset_states()
-        self.tb_ppo_loss.reset_states()
-        self.tb_value_loss.reset_states()
-        self.tb_entropy_loss.reset_states()
-        
-        print(f'train agent (v_est_loss) at step {step} = {vest_loss}')
 """ ******************************************************************************** """
 
 if __name__ == "__main__":
