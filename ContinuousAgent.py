@@ -155,6 +155,9 @@ class Agent(object):
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
     
+    if self.cfg['actor_permutate']:
+      np.random.shuffle(sample_range)
+
     for _ in range(self.cfg['actor_epochs']):
       for i in range(batches_amt):
         if self.cfg['actor_shuffle']:
@@ -186,10 +189,10 @@ class Agent(object):
           ppo_clip_loss = self._ppo_clip_loss(log_pi_new=log_pi_new, log_pi_old=log_pi_old, advantage=batch_advantage)
           entropy_loss = self.cfg['entropy_factor'] * self._entropy_loss(batch_y_pred_mu, self.log_std_stateless)
           reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
+          actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
+          
           value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
-
-          actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
           critic_loss = value_loss + reg_loss_critic
           
           # tensorboard logging
@@ -269,17 +272,22 @@ class Agent(object):
     print(f'Episode {episode}, Score {epscore}')
 
   def learn(self):
-    s, episode, scores, observations, actions, done = self.env.reset(), 0, [], [], [], False
-    
+    s, episode, done = self.env.reset(), 0, False
+    observations, actions, scores = [], [], []
+
     for self.step in range(self.cfg['total_steps']):
       # choose and take an action, advance environment and store data
       # self.env.render()
-      scaled_a, unscaled_a, a_dist = self.actor_choose(s)
       observations.append(self.env.unnormalize_obs(s))
+
+      scaled_a, unscaled_a, a_dist = self.actor_choose(s)
       actions.append(unscaled_a)
+
       s_, r, done, _ = self.env.step(scaled_a)
       scores.append(self.env.unnormalize_reward(r))
+
       v_est = self.critic_evaluate(s)
+      
       self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
       s = s_
       
