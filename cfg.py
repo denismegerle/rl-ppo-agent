@@ -29,6 +29,7 @@ cont_ppo_test_split_cfg = {
   'adam_critic_epsilon' : 1e-5,
 
   'tb_log_graph' : True,
+  'clip_policy_gradient_norm' : 0.5,
   
   # CRITIC
   'vest_clip' : 0.2,
@@ -54,9 +55,9 @@ cont_ppo_test_split_cfg = {
   
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
-  #'environment' : (lambda : ContinuousCartPoleEnv(seed=777)),
+  'environment' : (lambda : ContinuousCartPoleEnv(seed=777)),
   #'environment' : gym.make('HalfCheetah-v2'),
-  'environment' : (lambda : ReachingDotEnv(seed=777)),
+  #'environment' : (lambda : ReachingDotEnv(seed=777)),
   #'environment' : VecNormalize(DummyVecEnv([lambda: ContinuousCartPoleEnv(seed=1)]), norm_obs=True, norm_reward=True,
   #                 clip_obs=10.),
   'num_stab_ppo' : 1e-10,   # value for numeric stabilization of div/log

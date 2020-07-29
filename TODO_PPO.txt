@@ -14,6 +14,7 @@ TODO:
 - multi environment learning (should be easy with the vecenv...)
 - rename cfg vars with naming scheme ( e.g. loss relevant stuff to loss_blablub, etc)
 - make logging iffable
+- make statefull/stateless std iffable
 
 
 -- rest:

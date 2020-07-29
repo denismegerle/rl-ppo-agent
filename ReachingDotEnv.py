@@ -16,7 +16,7 @@ class ReachingDotEnv(gym.Env):
     self.random_start = True
     self.max_steps = 100
     self.env_size = 32
-    self.min_action, self.max_action = -1.0, 1.0
+    self.min_action, self.max_action = -0.5, 0.5
     self.reached_thresh = 2.0
     
     # ENV SETUP

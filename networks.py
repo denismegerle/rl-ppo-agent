@@ -49,12 +49,12 @@ def _twolayer_mlp_actor_net_orth(input_dim, output_dim):
                                   kernel_initializer=orth_weights_initializer(0.01), 
                                   bias_initializer=const_bias_initializer(0.0),
                                   kernel_regularizer=l2_regularizer())(dense2)
-  action_sig = Dense(output_dim,  activation='softplus',
-                                  kernel_initializer=orth_weights_initializer(np.sqrt(2)), 
-                                  bias_initializer=const_bias_initializer(0.0),
-                                  kernel_regularizer=l2_regularizer())(dense2)
+  #action_sig = Dense(output_dim,  activation='softplus',
+  #                                kernel_initializer=orth_weights_initializer(np.sqrt(2)), 
+  #                                bias_initializer=const_bias_initializer(0.0),
+  #                                kernel_regularizer=l2_regularizer())(dense2)
 
-  return Model(inputs=state, outputs=[action_mu, action_sig])
+  return Model(inputs=state, outputs=[action_mu])
 
 def _twolayer_mlp_critic_net_orth(input_dim, output_dim):
   state = Input(shape=input_dim)

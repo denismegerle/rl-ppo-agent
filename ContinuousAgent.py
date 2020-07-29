@@ -17,7 +17,8 @@ from scipy import io as scio
 from itertools import accumulate
 from _utils import npscanr, NormalizeWrapper, RunningMeanStd, tb_log_model_graph, listavg
 import datetime
-
+import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 
 
 class Agent(object):
@@ -41,6 +42,8 @@ class Agent(object):
     self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
     self.critic = self._build_network(self.cfg['critic_model'], self.input_dim, 1)
     
+    self.log_std_stateless = tf.Variable(tf.zeros(self.n_actions, dtype=tf.float32), trainable=True)
+
     ## MEMORY
     self._reset_memory()
     
@@ -75,15 +78,19 @@ class Agent(object):
     model.build(input_shape=input_dim)
     return model
   
+  def _get_dist(self, means, log_stds):
+    return tfd.Normal(loc=means, scale=K.exp(log_stds))
+
   def actor_choose(self, state):
-    a_mu, a_sig = self.actor(K.expand_dims(state, axis=0))
-    unscaled_action = np.clip(np.random.normal(loc=a_mu[0], scale=a_sig[0], size=None), -1.0, 1.0)
-    
+    a_mu = self.actor(K.expand_dims(state, axis=0))
+    dist = self._get_dist(a_mu[0], self.log_std_stateless)
+    unscaled_action = np.clip(dist.sample(), -1.0, 1.0)
+
     if self.cfg['scale_actions']:
       scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
     else: scaled_action = unscaled_action
 
-    return scaled_action, unscaled_action, [a_mu[0], a_sig[0]]
+    return scaled_action, unscaled_action, a_mu[0]
   
   def critic_evaluate(self, state):
     return self.critic(K.expand_dims(state, axis=0))[0]
@@ -91,7 +98,7 @@ class Agent(object):
   def store_transition(self, state, action, action_dist, reward, v_est, not_done):
     self.state_memory.append(state), self.not_done_memory.append(not_done)
     self.action_memory.append(action), self.action_dist_memory.append(action_dist)
-    self.reward_memory.append(reward), self.v_est_memory.append(v_est)    
+    self.reward_memory.append(reward), self.v_est_memory.append(v_est)
 
   def _calculate_gae(self, v_ests, rewards, not_dones):
     vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
@@ -113,16 +120,9 @@ class Agent(object):
     advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
     
     return returns, advantages
-    
-  def _norm_pdf(self, x, mu, sig):
-    var = tf.cast(K.square(sig), tf.float32)
-    denom = tf.cast(K.sqrt(2 * math.pi * var), tf.float32)
-    deviation = tf.cast(K.square(x - mu), tf.float32)
-    expon = - (1 / 2) * deviation / (var + self.cfg['num_stab_pdf'])
-    return (1 / denom) * K.exp(expon)
   
-  def _ppo_clip_loss(self, pi_new, pi_old, advantage):
-    ratio = pi_new / (pi_old + self.cfg['num_stab_ppo'])
+  def _ppo_clip_loss(self, log_pi_new, log_pi_old, advantage):
+    ratio = K.exp(log_pi_new - log_pi_old)
     clip_ratio = K.clip(ratio, min_value=1 - self.cfg['ppo_clip'], max_value=1 + self.cfg['ppo_clip'])
 
     surrogate1 = ratio * advantage
@@ -138,21 +138,20 @@ class Agent(object):
 
     return K.mean(K.minimum(surrogate1, surrogate2))
   
+  def _entropy_loss(self, mu, log_std):
+    return - K.mean(self._get_dist(mu, log_std).entropy())
+
   def _reg_loss(self, model):
     if model.losses:
       return tf.math.add_n(self.actor.losses)
     else : return 0.0
-
-
-  def _entropy_norm_pdf(self, sig):
-    entropy_loss = K.log(K.sqrt(2 * math.pi * math.e * K.square(sig)) + self.cfg['num_stab_pdf'])
-    return - K.mean(entropy_loss)
   
   def _train(self, returns, advantages):
     y_true_actions = self.action_memory
     y_pred_vest_old = self.v_est_memory
     y_true_returns = returns
-    
+    old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
+
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
     
@@ -172,25 +171,22 @@ class Agent(object):
         batch_advantage = np.asarray([advantages[i] for i in sample_idx])
         batch_y_pred_vest_old = np.asarray([y_pred_vest_old[i] for i in sample_idx])
         
-        batch_action_mu = [x[0] for x in batch_action_dist]
-        batch_action_sig = [x[1] for x in batch_action_dist]
-        
         if self.cfg['normalize_advantages']:
           batch_advantage = (batch_advantage - batch_advantage.mean()) / np.maximum(batch_advantage.std(), self.cfg['num_stab_advnorm'])
         
         with tf.GradientTape(persistent=True) as tape:
-          batch_y_pred_mu, batch_y_pred_sig = self.actor(batch_states)
+          batch_y_pred_mu = self.actor(batch_states)
           batch_y_pred_vest = self.critic(batch_states)
-          
+
           # in case of multiple actions p(a_0, ..., a_N) = p(a_0) * ... * p(a_N)
-          pi_new = K.prod(self._norm_pdf(batch_y_true_actions, batch_y_pred_mu, batch_y_pred_sig), axis=1)
-          pi_old = K.prod(self._norm_pdf(batch_y_true_actions, batch_action_mu, batch_action_sig), axis=1)
+          log_pi_new = K.sum(self._get_dist(batch_y_pred_mu, self.log_std_stateless).log_prob(batch_y_true_actions), axis=-1)
+          log_pi_old = K.sum(self._get_dist(batch_action_dist, old_log_std).log_prob(batch_y_true_actions), axis=-1)
           
           # loss calculation
-          ppo_clip_loss = self._ppo_clip_loss(pi_new=pi_new, pi_old=pi_old, advantage=batch_advantage)
-          entropy_loss = self.cfg['entropy_factor'] * self._entropy_norm_pdf(batch_action_sig)
-          value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
+          ppo_clip_loss = self._ppo_clip_loss(log_pi_new=log_pi_new, log_pi_old=log_pi_old, advantage=batch_advantage)
+          entropy_loss = self.cfg['entropy_factor'] * self._entropy_loss(batch_y_pred_mu, self.log_std_stateless)
           reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
+          value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
 
           actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
@@ -206,8 +202,11 @@ class Agent(object):
           self.tb_value_loss(value_loss)
           self.tb_critic_regloss(reg_loss_critic)
         
+        gradient = tape.gradient(actor_loss, [self.log_std_stateless])
+        self.actor_optimizer.apply_gradients(zip(gradient, [self.log_std_stateless]))
+
         gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
-        gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=0.5)
+        gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=self.cfg['clip_policy_gradient_norm'])
         self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
         
         gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
