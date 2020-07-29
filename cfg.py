@@ -18,6 +18,7 @@ cont_ppo_test_split_cfg = {
   'actor_epochs' : 3,               # 5
   'actor_batchsize' : 64,
   'actor_shuffle' : False,
+  'actor_permutate' : False,
   'adam_actor_epsilon' : 1e-5,
   
   # CRITIC
@@ -30,7 +31,7 @@ cont_ppo_test_split_cfg = {
 
   'tb_log_graph' : True,
   'clip_policy_gradient_norm' : 0.5,
-  
+
   # CRITIC
   'vest_clip' : 0.2,
   
