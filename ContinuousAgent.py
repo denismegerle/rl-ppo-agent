@@ -11,6 +11,7 @@ import gym
 import math
 import operator
 import os
+import pprint
 import random
 
 # config and local imports
@@ -18,9 +19,7 @@ import _cfg
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
 
 
-
-
-
+# -----------------------------------------------------------------------------------------------------------
 class Agent(object):
   
   def __init__(self, cfg):
@@ -67,6 +66,11 @@ class Agent(object):
     if self.cfg['tb_log_graph']:
       tb_log_model_graph(self.train_summary_writer, self.actor, self.train_log_dir, 'actor_model')
       tb_log_model_graph(self.train_summary_writer, self.critic, self.train_log_dir, 'critic_model')
+    
+    cfg_as_list = [ [str(k), str(v)] for k, v in self.cfg.items() ]
+    
+    with self.train_summary_writer.as_default():
+      tf.summary.text(name='hyperparameters', data=tf.convert_to_tensor(cfg_as_list), step=0)
     
 
   def _reset_memory(self):
@@ -166,18 +170,18 @@ class Agent(object):
     old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
 
     sample_amt = len(self.action_memory)
-    sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['actor_batchsize']
+    sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['batchsize']
     
-    if self.cfg['actor_permutate']:
+    if self.cfg['permutate']:
       np.random.shuffle(sample_range)
 
-    for _ in range(self.cfg['actor_epochs']):
+    for _ in range(self.cfg['epochs']):
       for i in range(batches_amt):
-        if self.cfg['actor_shuffle']:
+        if self.cfg['shuffle']:
           np.random.shuffle(sample_range)
-          sample_idx = sample_range[:self.cfg['actor_batchsize']]
+          sample_idx = sample_range[:self.cfg['batchsize']]
         else:
-          sample_idx = sample_range[i * self.cfg['actor_batchsize']:(i + 1) * self.cfg['actor_batchsize']]
+          sample_idx = sample_range[i * self.cfg['batchsize']:(i + 1) * self.cfg['batchsize']]
         
         batch_states = np.asarray([self.state_memory[i] for i in sample_idx])
         batch_action_dist = np.asarray([self.action_dist_memory[i] for i in sample_idx])
@@ -323,9 +327,7 @@ class Agent(object):
         
         self.last_vest_buffer = self.critic_evaluate(s_)
         self.train()
-        
-        
-""" ******************************************************************************** """
+# -----------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
   tf.random.set_seed(1)

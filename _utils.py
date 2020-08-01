@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers.schedules import InverseTimeDecay, LearningRate
 
 
 #################### FUNCTIONALS ####################
-def scan(func, acc, xs):  # implementation of haskell scanl
+def scan(func, acc, xs):            # implementation of haskell scanl
   for x in xs:
     acc = func(acc, x)
     yield acc
@@ -99,6 +99,9 @@ class RolloutInverseTimeDecay(InverseTimeDecay):
     
   def __call__(self, step):
     return super().__call__(self.rollout_step)
+  
+  def __str__(self):
+    return f'{self.name}[init_lr={self.initial_learning_rate}, decay_steps={self.decay_steps}, decay_rate={self.decay_rate}, staircase={self.staircase}]'
 
 class StepLambda(LearningRateSchedule):
   
