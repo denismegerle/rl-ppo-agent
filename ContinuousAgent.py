@@ -1,24 +1,24 @@
 import numpy as np
-import gym
-import operator
-import tensorflow as tf 
-import matplotlib.pyplot as plt
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.optimizers.schedules import LearningRateSchedule, ExponentialDecay, InverseTimeDecay
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
-from functools import reduce
-import tensorflow.keras.backend as K
-import math, random, cfg
-from scipy.signal import lfilter
 import pickle as pkl
-from scipy import io as scio
-from itertools import accumulate
-from _utils import npscanr, NormalizeWrapper, RunningMeanStd, tb_log_model_graph, listavg
-import datetime
-import tensorflow_probability as tfp
+import tensorflow as tf
+import tensorflow.keras.backend as K
+
 from tensorflow_probability import distributions as tfd
+from tensorflow.keras.optimizers import Adam
+
+import datetime
+import gym
+import math
+import operator
+import os
+import random
+
+# config and local imports
+import _cfg
+from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
+
+
+
 
 
 class Agent(object):
@@ -36,21 +36,23 @@ class Agent(object):
     self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
     self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
     
-    self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
-    self.actor = self._build_network(self.cfg['actor_model'], self.input_dim, self.n_actions)
-
-    self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
-    self.critic = self._build_network(self.cfg['critic_model'], self.input_dim, 1)
+    if self.cfg['model_load_path_prefix']:
+      self.load_model(self.cfg['model_load_path_prefix'])
+    else:
+      self.actor = self._build_network(self.cfg['actor_model'], self.input_dim, self.n_actions)
+      self.critic = self._build_network(self.cfg['critic_model'], self.input_dim, 1)
+      self.log_std_stateless = tf.Variable(tf.zeros(self.n_actions, dtype=tf.float32), trainable=True)
     
-    self.log_std_stateless = tf.Variable(tf.zeros(self.n_actions, dtype=tf.float32), trainable=True)
+    self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
+    self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
 
     ## MEMORY
     self._reset_memory()
     
     ## TENSORBOARD metrics and writers
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = f"logs/ppoagent/{type(self.env).__name__}/{str(current_time)}"
-    self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+    self.start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    self.train_log_dir = f"logs/ppoagent/{self.env.get_name()}/{str(self.start_time)}"
+    self.train_summary_writer = tf.summary.create_file_writer(self.train_log_dir)
     
     # logging losses
     self.tb_actor_loss = tf.keras.metrics.Mean('actor_losses/total_loss', dtype=tf.float32)
@@ -63,8 +65,8 @@ class Agent(object):
     self.tb_critic_regloss = tf.keras.metrics.Mean('critic_losses/reg_loss', dtype=tf.float32)
 
     if self.cfg['tb_log_graph']:
-      tb_log_model_graph(self.train_summary_writer, self.actor, train_log_dir, 'actor_model')
-      tb_log_model_graph(self.train_summary_writer, self.critic, train_log_dir, 'critic_model')
+      tb_log_model_graph(self.train_summary_writer, self.actor, self.train_log_dir, 'actor_model')
+      tb_log_model_graph(self.train_summary_writer, self.critic, self.train_log_dir, 'critic_model')
     
 
   def _reset_memory(self):
@@ -78,6 +80,19 @@ class Agent(object):
     model.build(input_shape=input_dim)
     return model
   
+  def save_model(self, filepath):
+    file_prefix = f'{filepath}/models/{self.step}'
+    os.makedirs(file_prefix)
+    
+    tf.keras.models.save_model(self.actor, f'{file_prefix}_actor.h5', overwrite=True, include_optimizer=False, save_format='h5')
+    tf.keras.models.save_model(self.actor, f'{file_prefix}_critic.h5', overwrite=True, include_optimizer=False, save_format='h5')
+    np.save(f'{file_prefix}_logstd.npy', self.log_std_stateless.numpy())
+  
+  def load_model(self, file_prefix):
+    self.actor = tf.keras.models.load_model(f'{file_prefix}_actor.h5', compile=False)
+    self.critic = tf.keras.models.load_model(f'{file_prefix}_critic.h5', compile=False)
+    self.log_std_stateless = tf.Variable(np.load(f'{file_prefix}_logstd.npy'), trainable=True)
+    
   def _get_dist(self, means, log_stds):
     return tfd.Normal(loc=means, scale=K.exp(log_stds))
 
@@ -100,7 +115,7 @@ class Agent(object):
     self.action_memory.append(action), self.action_dist_memory.append(action_dist)
     self.reward_memory.append(reward), self.v_est_memory.append(v_est)
 
-  def _calculate_gae(self, v_ests, rewards, not_dones):
+  def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones):
     vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
     
     # calculate actual returns (discounted rewards) based on observation
@@ -111,13 +126,13 @@ class Agent(object):
     discounts = self.cfg['gae_gamma'] * notdones
     returns = npscanr(discounted_return_fn, self.last_vest_buffer, list(zip(rews, discounts)))
 
-    # calculate actual advantages based on td residual (see gae paper)
+    # calculate actual advantages based on td residual (see gae paper, eq. 16)
     def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
-      weighted_discount, td = weights_td_tuple
-      return td + weighted_discount * accumulated_td
+      td, weighted_discount = weights_td_tuple
+      return accumulated_td * weighted_discount + td 
     
     deltas = rews + discounts * vests[1:] - vests[:-1]
-    advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(discounts * self.cfg['gae_lambda'], deltas)))
+    advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(deltas, discounts * self.cfg['gae_lambda'])))
     
     return returns, advantages
   
@@ -146,10 +161,8 @@ class Agent(object):
       return tf.math.add_n(self.actor.losses)
     else : return 0.0
   
-  def _train(self, returns, advantages):
-    y_true_actions = self.action_memory
-    y_pred_vest_old = self.v_est_memory
-    y_true_returns = returns
+  def _train(self, returns, advantages, actions, v_ests):
+    y_true_actions, y_pred_vest_old, y_true_returns = actions, v_ests, returns
     old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
 
     sample_amt = len(self.action_memory)
@@ -217,10 +230,10 @@ class Agent(object):
   
   def train(self):    
     # calculate returns and advantages
-    self.returns, self.advantages = self._calculate_gae(self.v_est_memory, self.reward_memory, self.not_done_memory)
+    self.returns, self.advantages = self._calculate_returns_and_advantages(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
     # train agent
-    self._train(self.returns, self.advantages)
+    self._train(self.returns, self.advantages, self.action_memory, self.v_est_memory)
     self._log_training()
     self._reset_memory()
 
@@ -242,6 +255,10 @@ class Agent(object):
       tf.summary.histogram('env_metrics/returns_per_step', self.returns, step=self.step)
       tf.summary.histogram('env_metrics/advantages_per_step', self.advantages, step=self.step)
       
+      # log optimizer statistisc
+      tf.summary.scalar('optimizer/actor_lr', self.actor_optimizer._decayed_lr(tf.float32), step=self.step)
+      tf.summary.scalar('optimizer/critic_lr', self.critic_optimizer._decayed_lr(tf.float32), step=self.step)
+          
     self.tb_actor_loss.reset_states()
     self.tb_ppo_loss.reset_states()
     self.tb_entropy_loss.reset_states()
@@ -252,7 +269,7 @@ class Agent(object):
     self.tb_critic_regloss.reset_states()
 
   def _log_episode(self, observations, actions, scores, episode, step):
-    epscore = reduce(operator.add, scores)
+    epscore = foldl(operator.add, scores)
     with self.train_summary_writer.as_default():
       tf.summary.scalar('env_metrics/episode_score_per_step', epscore, step=step)
       tf.summary.scalar('env_metrics/episode_score_per_episode', epscore, step=episode)
@@ -268,7 +285,7 @@ class Agent(object):
       for i in range(acts.shape[1]):
         tf.summary.histogram(f'env_metrics_acts/action_{i}_per_episode', acts[:, i], step=episode)
     
-    # DEBUG; TODO REMOVE
+    # DEBUG
     print(f'Episode {episode}, Score {epscore}')
 
   def learn(self):
@@ -297,16 +314,15 @@ class Agent(object):
         s, scores, observations, actions, done = self.env.reset(), [], [], [], False
         episode += 1
 
+      if self.step % self.cfg['model_save_interval'] == 0:
+        self.save_model(self.train_log_dir)
+        
       if self.step % self.cfg['rollout'] == 0 and self.step > 0:
         self.cfg['adam_actor_alpha'].update_rollout_step(self.step)
         self.cfg['adam_critic_alpha'].update_rollout_step(self.step)
         
-        with self.train_summary_writer.as_default():
-          tf.summary.scalar('optimizer/actor_lr', self.actor_optimizer._decayed_lr(tf.float32), step=self.step)
-          tf.summary.scalar('optimizer/critic_lr', self.critic_optimizer._decayed_lr(tf.float32), step=self.step)
-        
         self.last_vest_buffer = self.critic_evaluate(s_)
-        agent.train()
+        self.train()
         
         
 """ ******************************************************************************** """
@@ -315,7 +331,7 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = cfg.cont_ppo_test_split_cfg
+  agt_cfg = _cfg.cont_ppo_test_split_cfg
   agent = Agent(cfg=agt_cfg)
 
   agent.learn()

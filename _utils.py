@@ -4,7 +4,7 @@ import tensorflow as tf
 from functools import reduce
 import operator
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from tensorflow.keras.optimizers.schedules import InverseTimeDecay
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay, LearningRateSchedule
 
 
 #################### FUNCTIONALS ####################
@@ -46,6 +46,9 @@ class NormalizeWrapper(VecNormalize):
   
   def step(self, action):
     return [x[0] for x in super().step([action])]
+  
+  def get_name(self):
+    return type(self.envs[0]).__name__
 
 
 class RunningMeanStd(object):
@@ -96,6 +99,20 @@ class RolloutInverseTimeDecay(InverseTimeDecay):
     
   def __call__(self, step):
     return super().__call__(self.rollout_step)
+
+class StepLambda(LearningRateSchedule):
+  
+  def __init__(self, lr_f):
+    self.lr_f = lr_f
+    self.rollout_step = 0
+  
+  def update_rollout_step(self, new_step):
+    assert new_step > 0 and new_step > self.rollout_step, 'invalid new rollout step defined'
+    self.rollout_step = new_step
+    
+  def __call__(self, step):
+    return self.lr_f(self.rollout_step)
+
 
 def tb_log_model_graph( summary_writer, keras_model, logdir, name='model_graph', 
                         show_shapes=True, show_layer_names=True, rankdir='TB',

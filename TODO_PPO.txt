@@ -1,33 +1,21 @@
 TODO:
 
 -- general:
-- optimizer cfg choosing
-- define calculate gae properly, use two fcts or smth (for returns / advantages)
-- remove TODO from calulate gae
-- give _train the variables y_true_actions/returns + y_pred_vest_old IN their parameter
 - 158-167 can we do that more elegant? through some wrapper function and functionals?
-- rename ppo_entropy_factor to entropy_factor
-- add 0.5 from gradient to cfg
-- put distribution stuff in _util !
-- is action rescaling actually implemented properly? since actions range != action_dist range...
-- norm to logpdf maybe
 - multi environment learning (should be easy with the vecenv...)
-- rename cfg vars with naming scheme ( e.g. loss relevant stuff to loss_blablub, etc)
-- make logging iffable
-- make statefull/stateless std iffable
-
+- logging of: std, clip ratio, 
 
 -- rest:
-- costa.sh -> implementation details checken
 - use forced types in parameters dosmth(epsilon: float = 1e-4, ...)
-- proper naming for envs in tb!
 - pull out all seeds to config such that it's possible to reproduce results exactly
 - document optimizations ... (and give sources of each :))
-- put all losses in the _utils...
 - adjust name of tf run to contain important hyperparams!
 - percent done + estimated time printen, rest über tensorboard...
 - load/save model
 - maybe separate debug log cfg?
+- rewrite readme
 
-temp:
-- what to log: actorloss, criticloss, 
+- refine readme, add todolist there + whats done already.
+- embed gifs of working agents + learning rates/adv/rewards per step/episode for different tasks
+- order cfg...
+- create a nice test file
