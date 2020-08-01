@@ -5,7 +5,25 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
 ## Implementation
 
 ### TODO
-* ...
+-- general:
+- 158-167 can we do that more elegant? through some wrapper function and functionals?
+- multi environment learning (should be easy with the vecenv...)
+- logging of: std, clip ratio, 
+
+-- rest:
+- use forced types in parameters dosmth(epsilon: float = 1e-4, ...)
+- pull out all seeds to config such that it's possible to reproduce results exactly
+- document optimizations ... (and give sources of each :))
+- adjust name of tf run to contain important hyperparams!
+- percent done + estimated time printen, rest über tensorboard...
+- maybe separate debug log cfg?
+- rewrite readme
+
+- refine readme, add todolist there + whats done already.
+- embed gifs of working agents + learning rates/adv/rewards per step/episode for different tasks
+- order cfg...
+- create a nice test file for saved models, "model zoo" thingy
+
 
 ### NEXT
 * Solving jumping out of local minimum after some training by using Exponential/InverseTime decay of learning rate (#4 of [2])
