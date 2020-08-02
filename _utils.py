@@ -134,3 +134,10 @@ def tb_log_model_graph( summary_writer, keras_model, logdir, name='model_graph',
   tf.keras.utils.plot_model(keras_model, to_file=f'{logdir}/{name}.png', 
                             show_shapes=show_shapes, show_layer_names=show_layer_names,
                             rankdir=rankdir, expand_nested=expand_nested, dpi=dpi)
+  
+  model_img = tf.keras.preprocessing.image.load_img(f'{logdir}/{name}.png')
+  model_img = np.expand_dims(model_img, axis=0)
+  
+  # model_img = tf.image.decode_png(value)
+  with summary_writer.as_default():
+    tf.summary.image(f'Model [{name}]', model_img, step=0)

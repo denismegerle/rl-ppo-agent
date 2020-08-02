@@ -1,11 +1,3 @@
-import numpy as np
-import pickle as pkl
-import tensorflow as tf
-import tensorflow.keras.backend as K
-
-from tensorflow_probability import distributions as tfd
-from tensorflow.keras.optimizers import Adam
-
 import datetime
 import gym
 import math
@@ -14,9 +6,21 @@ import os
 import pprint
 import random
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+import numpy as np
+import pickle as pkl
+import tensorflow as tf
+import tensorflow.keras.backend as K
+
+from tensorflow_probability import distributions as tfd
+from tensorflow.keras.optimizers import Adam
+from tqdm import tqdm
+
 # config and local imports
 import _cfg
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
+
 
 
 # -----------------------------------------------------------------------------------------------------------
@@ -278,7 +282,7 @@ class Agent(object):
       tf.summary.scalar('env_metrics/episode_score_per_step', epscore, step=step)
       tf.summary.scalar('env_metrics/episode_score_per_episode', epscore, step=episode)
       tf.summary.histogram('env_metrics/rewards_per_episode', scores, step=episode)
-          
+      
       # observations logging
       obs = np.asarray(observations)
       for i in range(obs.shape[1]):
@@ -288,15 +292,16 @@ class Agent(object):
       acts = np.asarray(actions)
       for i in range(acts.shape[1]):
         tf.summary.histogram(f'env_metrics_acts/action_{i}_per_episode', acts[:, i], step=episode)
-    
-    # DEBUG
-    print(f'Episode {episode}, Score {epscore}')
+      
+      # std logging
+      for i in range(self.log_std_stateless.shape[0]):
+        tf.summary.scalar(f'env_metrics_acts/std_action_{i}_per_episode', np.exp(self.log_std_stateless[i]), step=step)
 
   def learn(self):
     s, episode, done = self.env.reset(), 0, False
     observations, actions, scores = [], [], []
 
-    for self.step in range(self.cfg['total_steps']):
+    for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
       # self.env.render()
       observations.append(self.env.unnormalize_obs(s))

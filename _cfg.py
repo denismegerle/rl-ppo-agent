@@ -3,8 +3,8 @@ import gym
 import os, sys
 
 # config and local imports
-from ContCartpoalEnv import ContinuousCartPoleEnv
-from ReachingDotEnv import ReachingDotEnv
+from envs.ContCartpoalEnv import ContinuousCartPoleEnv
+from envs.ReachingDotEnv import ReachingDotEnv
 from _nets import _twolayer_mlp_actor_net, _twolayer_mlp_critic_net, _twolayer_mlp_actor_net_orth, _twolayer_mlp_critic_net_orth
 from _utils import RolloutInverseTimeDecay
 
@@ -12,6 +12,7 @@ IMPORT_SIM_FRAMEWORK = False
 if IMPORT_SIM_FRAMEWORK:
   sys.path.append('../SimulationFramework/simulation/src/gym_envs//mujoco/')
   from gym_envs.mujoco.reach_env import ReachEnv
+
 
 
 
@@ -81,7 +82,6 @@ cont_ppo_test_split_cfg = {
   'num_stab_pdf' : 1e-10,
 }
 
-print(cont_ppo_test_split_cfg.items())
   # ENVIRONMENT / TRAINING
   #'environment' : ReachEnv(control='ik', render=True, randomize_objects=False),
   
