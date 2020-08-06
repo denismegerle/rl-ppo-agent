@@ -26,7 +26,7 @@ from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
 # -----------------------------------------------------------------------------------------------------------
 class Agent(object):
   
-  def __init__(self, cfg):
+  def __init__(self, cfg, seed=1):
     self.cfg = cfg
     self.env = NormalizeWrapper(self.cfg['environment'],
                                 norm_obs=self.cfg['normalize_observations'], norm_reward=self.cfg['normalize_rewards'],
@@ -92,14 +92,14 @@ class Agent(object):
     file_prefix = f'{filepath}/models/{self.step}'
     os.makedirs(file_prefix)
     
-    tf.keras.models.save_model(self.actor, f'{file_prefix}_actor.h5', overwrite=True, include_optimizer=False, save_format='h5')
-    tf.keras.models.save_model(self.actor, f'{file_prefix}_critic.h5', overwrite=True, include_optimizer=False, save_format='h5')
-    np.save(f'{file_prefix}_logstd.npy', self.log_std_stateless.numpy())
+    tf.keras.models.save_model(self.actor, f'{file_prefix}/actor.h5', overwrite=True, include_optimizer=False, save_format='h5')
+    tf.keras.models.save_model(self.actor, f'{file_prefix}/critic.h5', overwrite=True, include_optimizer=False, save_format='h5')
+    np.save(f'{file_prefix}/logstd.npy', self.log_std_stateless.numpy())
   
   def load_model(self, file_prefix):
-    self.actor = tf.keras.models.load_model(f'{file_prefix}_actor.h5', compile=False)
-    self.critic = tf.keras.models.load_model(f'{file_prefix}_critic.h5', compile=False)
-    self.log_std_stateless = tf.Variable(np.load(f'{file_prefix}_logstd.npy'), trainable=True)
+    self.actor = tf.keras.models.load_model(f'{file_prefix}/actor.h5', compile=False)
+    self.critic = tf.keras.models.load_model(f'{file_prefix}/critic.h5', compile=False)
+    self.log_std_stateless = tf.Variable(np.load(f'{file_prefix}/logstd.npy'), trainable=True)
     
   def _get_dist(self, means, log_stds):
     return tfd.Normal(loc=means, scale=K.exp(log_stds))
@@ -146,7 +146,7 @@ class Agent(object):
   
   def _ppo_clip_loss(self, log_pi_new, log_pi_old, advantage):
     ratio = K.exp(log_pi_new - log_pi_old)
-    clip_ratio = K.clip(ratio, min_value=1 - self.cfg['ppo_clip'], max_value=1 + self.cfg['ppo_clip'])
+    clip_ratio = K.clip(ratio, min_value=1 - self.cfg['ppo_clip'](self.step), max_value=1 + self.cfg['ppo_clip'](self.step))
 
     surrogate1 = ratio * advantage
     surrogate2 = clip_ratio * advantage
@@ -154,7 +154,7 @@ class Agent(object):
     return - K.mean(K.minimum(surrogate1, surrogate2))
   
   def _value_loss(self, values, values_old, returns):
-    clipped_vest = K.clip(values, min_value=values_old - self.cfg['vest_clip'], max_value=values_old + self.cfg['vest_clip'])
+    clipped_vest = K.clip(values, min_value=values_old - self.cfg['vest_clip'](self.step), max_value=values_old + self.cfg['vest_clip'](self.step))
 
     surrogate1 = K.square(values - returns)
     surrogate2 = K.square(clipped_vest - returns)
@@ -208,7 +208,7 @@ class Agent(object):
           
           # loss calculation
           ppo_clip_loss = self._ppo_clip_loss(log_pi_new=log_pi_new, log_pi_old=log_pi_old, advantage=batch_advantage)
-          entropy_loss = self.cfg['entropy_factor'] * self._entropy_loss(batch_y_pred_mu, self.log_std_stateless)
+          entropy_loss = self.cfg['entropy_factor'](self.step) * self._entropy_loss(batch_y_pred_mu, self.log_std_stateless)
           reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
           actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
           
@@ -303,7 +303,7 @@ class Agent(object):
 
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      # self.env.render()
+      #self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -339,6 +339,4 @@ if __name__ == "__main__":
   np.random.seed(1)
   
   agt_cfg = _cfg.cont_ppo_test_split_cfg
-  agent = Agent(cfg=agt_cfg)
-
-  agent.learn()
+  Agent(cfg=agt_cfg).learn()
