@@ -109,6 +109,34 @@ half_cheetah_v2_cfg = {
   'environment' : (lambda : gym.make('HalfCheetah-v2')),
 }
 
+cont_cartpoal_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : ContinuousCartPoleEnv()),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  
+  # ---- TRAINING ----
+  'epochs' : 3,
+  'batchsize' : 64,
+  'shuffle' : False,
+  'permutate' : True,
+  'total_steps' : 1000000,
+  'rollout' : 2048,
+}
+
+reaching_dot_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : ReachingDotEnv()),
+
+  # ---- TRAINING ----
+  'total_steps' : 500000,
+}
+
+
 """
 cont_ppo_test_split_cfg = {
   **base_cfg,

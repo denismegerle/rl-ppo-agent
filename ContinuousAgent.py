@@ -339,5 +339,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.half_cheetah_v2_cfg
+  agt_cfg = _cfg.reaching_dot_cfg
   Agent(cfg=agt_cfg).learn()
