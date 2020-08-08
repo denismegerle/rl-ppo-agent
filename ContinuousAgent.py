@@ -169,7 +169,8 @@ class Agent(object):
       return tf.math.add_n(self.actor.losses)
     else : return 0.0
   
-  def _train(self, returns, advantages, actions, v_ests):
+  def _train(self, states, actions, actions_dist, returns, advantages, v_ests):
+    x_states, y_true_actions_dist = states, actions_dist
     y_true_actions, y_pred_vest_old, y_true_returns = actions, v_ests, returns
     old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
 
@@ -187,8 +188,8 @@ class Agent(object):
         else:
           sample_idx = sample_range[i * self.cfg['batchsize']:(i + 1) * self.cfg['batchsize']]
         
-        batch_states = np.asarray([self.state_memory[i] for i in sample_idx])
-        batch_action_dist = np.asarray([self.action_dist_memory[i] for i in sample_idx])
+        batch_states = np.asarray([x_states[i] for i in sample_idx])
+        batch_action_dist = np.asarray([y_true_actions_dist[i] for i in sample_idx])
         
         batch_y_true_actions = np.asarray([y_true_actions[i] for i in sample_idx])
         batch_y_true_returns = np.asarray([y_true_returns[i] for i in sample_idx])
@@ -236,12 +237,12 @@ class Agent(object):
         gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
-  def train(self):    
+  def train(self):
     # calculate returns and advantages
     self.returns, self.advantages = self._calculate_returns_and_advantages(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
     # train agent
-    self._train(self.returns, self.advantages, self.action_memory, self.v_est_memory)
+    self._train(self.state_memory, self.action_memory, self.action_dist_memory, self.returns, self.advantages, self.v_est_memory)
     self._log_training()
     self._reset_memory()
 
@@ -338,5 +339,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.cont_ppo_test_split_cfg
+  agt_cfg = _cfg.half_cheetah_v2_cfg
   Agent(cfg=agt_cfg).learn()

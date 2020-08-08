@@ -1,11 +1,12 @@
 
 import gym
+import math
 import os, sys
 
 # config and local imports
 from envs.ContCartpoalEnv import ContinuousCartPoleEnv
 from envs.ReachingDotEnv import ReachingDotEnv
-from _nets import _twolayer_mlp_actor_net_orth, _twolayer_mlp_critic_net_orth
+from _nets import _mlp_actor_net_orth, _mlp_critic_net_orth
 from _utils import RolloutInverseTimeDecay, StepLambda
 
 IMPORT_SIM_FRAMEWORK = False
@@ -16,28 +17,17 @@ if IMPORT_SIM_FRAMEWORK:
 
 
 
-
-
+""" 
+  base config, environment has to set in subconfigs
+"""
 base_cfg = {
-  # ---- NUMERICAL ----
-  'num_stab_envnorm' : 1e-8,      # numerical stab. normalization wrapper environment
-  'num_stab_advnorm' : 1e-10,     # numerical stab. batch-wise advantage normalization
-}
-
-mujoco_base_cfg = {}
-atari_base_cfg = {}
-
-
-cont_ppo_test_split_cfg = {
-  **base_cfg,
-  
   # ---- NET/TF CONFIG ----
-  'actor_model' : _twolayer_mlp_actor_net_orth,
-  'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - (step / 3e6))),
+  'actor_model' : _mlp_actor_net_orth(),
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4),
   'adam_actor_epsilon' : 1e-5,
 
-  'critic_model' : _twolayer_mlp_critic_net_orth,
-  'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - (step / 3e6))),
+  'critic_model' : _mlp_critic_net_orth(),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4),
   'adam_critic_epsilon' : 1e-5,
   
   'model_save_interval' : 10000,
@@ -46,7 +36,99 @@ cont_ppo_test_split_cfg = {
   
   # ---- LOSS CALCULATION ----
   'ppo_clip' : (lambda step: 0.2),
-  'entropy_factor' : (lambda step: 0e-2 * (1.0 - (step / 3e6))),
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'value_loss_factor' : 1.0,
+  'vest_clip' : (lambda step: 0.2),
+  
+  'actor_regloss_factor' : 1e-4,
+  'critic_regloss_factor' : 1e-4,
+  
+  'clip_policy_gradient_norm' : 0.5,
+  
+  # ---- TRAINING ----
+  'epochs' : 3,
+  'batchsize' : 64,
+  'shuffle' : False,
+  'permutate' : True,
+  'total_steps' : 1000000,
+  'rollout' : 1024,
+  
+  'gae_gamma' : 0.99,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training
+  
+  # ---- ENVIRONMENT ----
+  'environment' : None,
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+
+  'clip_observations' : 10.0,
+  'clip_rewards' : 10.0,
+  
+  'gamma_env_normalization' : 0.99,
+  
+  # ---- NUMERICAL ----
+  'num_stab_envnorm' : 1e-8,      # numerical stab. normalization wrapper environment
+  'num_stab_advnorm' : 1e-10,     # numerical stab. batch-wise advantage normalization
+}
+
+mujoco_base_cfg = {
+  **base_cfg,
+  
+  # ---- NET/TF CONFIG ----
+  'actor_model' : _mlp_actor_net_orth(hidden_layers=[128, 128]),
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
+  'critic_model' : _mlp_actor_net_orth(hidden_layers=[128, 128]),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
+  
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 0e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 32,
+  'total_steps' : 1000000,
+  'rollout' : 2048,
+  
+  # ---- ENVIRONMENT ----
+  'environment' : None
+}
+
+atari_base_cfg = {}
+
+
+# ------------------------------------------------ ENVIRONMENT EXAMPLES ------------------------------------------------
+half_cheetah_v2_cfg = {
+  **mujoco_base_cfg,
+  
+  'environment' : (lambda : gym.make('HalfCheetah-v2')),
+}
+
+"""
+cont_ppo_test_split_cfg = {
+  **base_cfg,
+  
+  # ---- NET/TF CONFIG ----
+  'actor_model' : _twolayer_mlp_actor_net_orth,
+  'adam_actor_alpha' : RolloutInverseTimeDecay(initial_learning_rate=3e-4, decay_steps=100000, decay_rate=1.0, staircase=False),
+  'adam_actor_epsilon' : 1e-5,
+
+  'critic_model' : _twolayer_mlp_critic_net_orth,
+  'adam_critic_alpha' : RolloutInverseTimeDecay(initial_learning_rate=3e-4, decay_steps=100000, decay_rate=1.0, staircase=False),
+  'adam_critic_epsilon' : 1e-5,
+  
+  'model_save_interval' : 10000,
+  'model_load_path_prefix' : None,
+  'tb_log_graph' : True,
+  
+  # ---- LOSS CALCULATION ----
+  'ppo_clip' : (lambda step: 0.2),
+  'entropy_factor' : (lambda step: 0e-2),
   
   'value_loss_factor' : 1.0,
   'vest_clip' : (lambda step: 0.2),
@@ -61,14 +143,14 @@ cont_ppo_test_split_cfg = {
   'batchsize' : 32,
   'shuffle' : False,
   'permutate' : True,
-  'total_steps' : 3000000,
+  'total_steps' : 1000000,
   'rollout' : 2048,
   
   'gae_gamma' : 0.99,               # reward discount factor
   'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training
   
   # ---- ENVIRONMENT ----
-  'environment' : (lambda : gym.make('HalfCheetah-v2')),
+  
   'normalize_advantages' : True,     # minibatch advantage normalization
   'normalize_observations' : True,   # running mean + variance normalization
   'normalize_rewards' : True,        # running variance normalization
@@ -79,7 +161,7 @@ cont_ppo_test_split_cfg = {
   
   'gamma_env_normalization' : 0.99,
 }
-
+"""
 
 # cont_ppo_test_split_cfg = {
 #   # ---- NET/TF CONFIG ----

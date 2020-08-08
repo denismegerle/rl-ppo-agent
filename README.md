@@ -23,10 +23,11 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
     - [x] stateless (learnable) log std as variance
   - [ ] parallelized environments
   - [x] scaling actions to proper range for environment
+  - [ ] discrete action space agent
 
-
+### tf features
 - [x] saving/loading `tf.keras` models
-- [ ] tensorboard integration, logging of
+- [x] tensorboard integration, logging of
   - [x] hyperparameters
   - [x] graph + image of model
   - [x] losses, optimizer lrs
@@ -36,30 +37,32 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
 - [x] remove prints in terminals, only use a progressbar and tensorboard for the rest
 - [ ] provide configs / gifs for some environments
   - ...
-- [ ] compile seeds together for replicability
-- [ ] run_env file that loads model, runs env and prints reward + video if possible
-
+- [x] compile seeds together for replicability
+- [x] run_env file that loads model, runs env and prints reward + video if possible
+- [ ] force types in parameters
+- [ ] code point references to the optimizations made
 
 
 
  
 
 -- rest:
-- use forced types in parameters dosmth(epsilon: float = 1e-4, ...)
-- document optimizations ... (and give sources of each :))
-- rewrite readme
 - comment the agent...
-- allow for discrete environments.
-
-- refine readme, add todolist there + whats done already.
 - embed gifs of working agents + learning rates/adv/rewards per step/episode for different tasks
-- create a nice test file for saved models, "model zoo" thingy
 
 ## Dependencies
 
 - pip requirements
 - imagemagick for creating gifs of env runs
 - graphviz for tf keras model to graph in tensorboard
+- mujoco_py's offscreen rendering is buggy in gym, for using run_model (GIF generation)
+  - adjust mujoco_py.MjRenderContextOffscreen(sim, None, device_id=0) in gym/envs/mujoco/mujoco_env.MujocoEnv._get_viewer(...)
+
+
+
+## Things...
+
+- generate batches of size N, each element containing [X = sequence of states, Y = action to take now]
 
 
 ## References
@@ -69,7 +72,4 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
 * _[4]_ GAE -> *Schulman, John, et al. "High-dimensional continuous control using generalized advantage estimation." arXiv preprint arXiv:1506.02438 (2015).*
 * _[5]_ Common Improvements -> *Engstrom, Logan, et al. "Implementation Matters in Deep RL: A Case Study on PPO and TRPO." International Conference on Learning Representations. 2019.*
 * _[6]_ StableBaselines3 -> *Raffin et al, "StableBaselines3", GitHub, https://github.com/DLR-RM/stable-baselines3*
-
-
-
-* [4] ContCartpoalEnv -> this environment is from Ian Danforth https://gist.github.com/iandanforth/e3ffb67cf3623153e968f2afdfb01dc8
+* _[7]_ ContCartpoalEnv -> *this environment is from Ian Danforth https://gist.github.com/iandanforth/e3ffb67cf3623153e968f2afdfb01dc8*
