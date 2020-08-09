@@ -57,11 +57,10 @@
 
 ### Custom Environments
 
-| Environment | Run | Episode Scores | Avg. Returns / Step |
-|-------------|-----|----------------|---------------------|
-|             | ![][contpoalrun]     |                |                     |
-|             |     |                |                     |
-|             |     |                |                     |
+| ContCartpoalEnv  | Episode Scores / Episode |
+|------------------|--------------------------|
+| ![][contpoalrun] |   ![][contpoalscores]    |
+|                  |                          |
 
 ---
 
@@ -104,3 +103,4 @@
 
 
 [contpoalrun]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/gym_animation.gif "ContCartpoalEnv-Run"
+[contpoalscores]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/epscores.png "ContCartpoalEnv-Scores"
