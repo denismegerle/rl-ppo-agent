@@ -57,11 +57,12 @@
 
 ### Custom Environments
 
-| ContCartpoalEnv  | Episode Scores / Episode |
+| ContCartpoalEnv  | Episode Scores / Steps   |
 |------------------|--------------------------|
 | ![][contpoalrun] |   ![][contpoalscores]    |
 |                  |                          |
-|  ReachingDotEnv  | Episode Scores / Episode |
+
+|  ReachingDotEnv  | Episode Scores / Steps   |
 |------------------|--------------------------|
 | ![][reachdotrun] |   ![][reachdotscores]    |
 
