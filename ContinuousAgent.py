@@ -113,7 +113,7 @@ class Agent(object):
       scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
     else: scaled_action = unscaled_action
 
-    return scaled_action, unscaled_action, a_mu[0]
+    return scaled_action, unscaled_action, a_mu
   
   def critic_evaluate(self, state):
     return self.critic(K.expand_dims(state, axis=0))[0]
@@ -304,7 +304,7 @@ class Agent(object):
 
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      # self.env.render()
+      #self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -339,5 +339,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.cont_cartpoal_cfg
+  agt_cfg = _cfg.reaching_dot_cfg
   Agent(cfg=agt_cfg).learn()

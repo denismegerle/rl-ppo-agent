@@ -1,0 +1,41 @@
+
+G1C
+	/host:CPU1À8À8¸-
+
+tf_Compute¸-œu
+
+tf_Computeœu")1À8TFE_Py_FastPathExecute_CH Ê¾,P€³Å"#1À8EagerExecute: FillHÀ¡2P€ôî"(1À8EagerLocalExecute: FillHÀ¬ê2PàÇŸ"-1À8ValidateInputTypeAndPlacementHàÂê3PàÜ*"#1À8EagerKernelExecuteHÀ‰Æ4P€Ã±"1À8	Fill:FillH ïê5P€ü¤"&1À8TFE_DeleteTensorHandleHÀçå;P Â"&1À8TFE_DeleteTensorHandleH É¯?P ág"91À8&EagerExecute: __inference_tf_trace_453H€Œô)Pà”¥•">1À8+EagerLocalExecute: __inference_tf_trace_453H€«æô)P€ÎÉ”"11À8EagerCopyToDeviceAndAddCacheKeyH ×µõ)P€øÉ"I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHàÎ÷)P Â"I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHÀÊ‘ø)PÀš"I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH ÜÔø)P "I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH Æ…ù)PÀš"I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH °¶ù)P "I1À88TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH šçù)P ".1À8ValidateInputTypeAndPlacementHà††˜@P ¬O"%1À8EagerKernelExecuteH€Ò™@P€½àï"{1À8FunctionRunH ñ˜›@P€ìöZ
+	step_name0Z
+id-4932263603703991875Z
+group_id0Z 
+name__inference_tf_trace_453"(1À8TFE_DeleteTensorHandleHÀ²º¢BPà°Œ"'1À8TFE_DeleteTensorHandleHàçƒ¤BPÀÏ$"'1À8TFE_DeleteTensorHandleH ğıœGPàÜ*"*1À8TFE_Py_FastPathExecute_CH€ÂÛ©GP€‚ˆ"'1À8TFE_DeleteTensorHandleH€º¥®GPÀš"'1À8TFE_DeleteTensorHandleHàËè®GP "*1À8EagerExecute: LogicalAndH€ø·¯GPàêÃ"/1À8EagerLocalExecute: LogicalAndH€âè¯GPÀóŒ".1À8ValidateInputTypeAndPlacementH ÃĞ°GPà§"$1À8EagerKernelExecuteH€ û°GP€›î"'1À8LogicalAnd:LogicalAndH ÌÊ±GPÀÂÏ"*1À8TFE_Py_FastPathExecute_CH ĞÚÇGPàİî"(1À8EagerExecute: IdentityHàï…ËGPà¹†"-1À8EagerLocalExecute: IdentityHà¤ËGPÀ÷ç".1À8ValidateInputTypeAndPlacementH ©ÛËGP "$1À8EagerKernelExecuteH ŞóËGPÀ£†""1À8Identity:IdentityH€»ÌGP Â"*1À8TFE_Py_FastPathExecute_CH€ß†ĞGPàš½"'1À8TFE_DeleteTensorHandleHàå±õGPÀÏ$"'1À8TFE_DeleteTensorHandleH€ıõûGPà§",1À8EagerExecute: WriteSummaryH ª‰‚HP —Ä"11À8EagerLocalExecute: WriteSummaryHàù­‚HPÀº™".1À8ValidateInputTypeAndPlacementHÀ‹ñ‚HPà§"$1À8EagerKernelExecuteH€Û•ƒHPÀ±Ÿ"+1À8WriteSummary:WriteSummaryH€úŞƒHPÀİ½"'1À8TFE_DeleteTensorHandleH òÙ‰HPÀ„="'1À8TFE_DeleteTensorHandleHÀ©ŠHPàÜ*"'1À8TFE_DeleteTensorHandleHà•àŠHPÀš"'1À8TFE_DeleteTensorHandleH€¤ªHP Â"'1À8TFE_DeleteTensorHandleHÀ¨çHPÀÏ$"'1À8TFE_DeleteTensorHandleH ÈÃ•HPà‘C"'1À8TFE_DeleteTensorHandleHà™–HP "b1œuExecutorState::ProcessH€Ş¸ŒAP ãïZ
+id-4932263603703991875Z
+iter_num0Z
+group_id0"U1œu4model_1/dense_4/MatMul/ReadVariableOp:ReadVariableOpHÀ¼º–AP€¨ÃZ
+group_id0"a1œuExecutorState::ProcessHÀƒÇ˜AP ¬OZ
+id-4932263603703991875Z
+iter_num0Z
+group_id0"U1œu5model_1/dense_5/BiasAdd/ReadVariableOp:ReadVariableOpH «Ù˜APàÜ*Z
+group_id0"a1œuExecutorState::ProcessHÀ×¨™APà‘CZ
+id-4932263603703991875Z
+iter_num0Z
+group_id0"T1œu4model_1/dense_3/MatMul/ReadVariableOp:ReadVariableOpH ÿº™APÀÏ$Z
+group_id0"a1œuExecutorState::ProcessHàƒø™AP€ŸIZ
+id-4932263603703991875Z
+iter_num0Z
+group_id0"T1œu4model_1/dense_5/MatMul/ReadVariableOp:ReadVariableOpHÀ«ŠšAPàÜ*Z
+group_id0"b1œuExecutorState::ProcessH ½ÍšAPÀÕ‡	Z
+id-4932263603703991875Z
+iter_num0Z
+group_id0"U1œu5model_1/dense_3/BiasAdd/ReadVariableOp:ReadVariableOpHà×ÙšAPÀÏ$Z
+group_id0"E1œu$model_1/dense_3/BiasAdd:_FusedMatMulH ‘¯›AP€©‡Z
+group_id0"91œumodel_1/dense_3/Tanh:TanhH€—á¢AP€ÔaZ
+group_id0"b1œuExecutorState::ProcessHÀºç£APà’‡Z
+id-4932263603703991875Z
+iter_num0Z
+group_id0"U1œu5model_1/dense_4/BiasAdd/ReadVariableOp:ReadVariableOpH âù£APàÜ*Z
+group_id0"E1œu$model_1/dense_4/BiasAdd:_FusedMatMulHÀÉ¤AP –€Z
+group_id0"91œumodel_1/dense_4/Tanh:TanhHÀô¥APà§Z
+group_id0"D1œu$model_1/dense_5/BiasAdd:_FusedMatMulH Ş¦APà‘CZ
+group_id0"B1¸-ExecutorDoneCallbackH ‚‡ªAP€âúZ
+id-4932263603703991875

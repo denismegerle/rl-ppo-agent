@@ -61,6 +61,9 @@
 |------------------|--------------------------|
 | ![][contpoalrun] |   ![][contpoalscores]    |
 |                  |                          |
+|  ReachingDotEnv  | Episode Scores / Episode |
+|------------------|--------------------------|
+| ![][reachdotrun] |   ![][reachdotscores]    |
 
 ---
 
@@ -104,3 +107,5 @@
 
 [contpoalrun]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/gym_animation.gif "ContCartpoalEnv-Run"
 [contpoalscores]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/epscores.png "ContCartpoalEnv-Scores"
+[reachdotrun]: logs/ppoagent/ReachingDotEnv/20200809-162309/gym_animation.gif "ReachingDotEnv-Run"
+[reachdotscores]: logs/ppoagent/ReachingDotEnv/20200809-162309/epscores.png "ReachingDotEnv-Scores"

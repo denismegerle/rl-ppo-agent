@@ -132,6 +132,9 @@ reaching_dot_cfg = {
 
   'environment' : (lambda : ReachingDotEnv()),
 
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  
   # ---- TRAINING ----
   'total_steps' : 200000,
 }
