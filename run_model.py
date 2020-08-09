@@ -11,10 +11,10 @@ from _utils import NormalizeWrapper
 import _cfg
 
 run_cfg = {
-    **_cfg.reaching_dot_cfg,
+    **_cfg.cont_cartpoal_cfg,
 
-    'actor_path': 'logs/ppoagent/ReachingDotEnv/20200808-165854/models/490000/actor.h5',
-    'logstd_path' : 'logs/ppoagent/ReachingDotEnv/20200808-165854/models/490000/logstd.npy'
+    'actor_path': 'logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/models/180000/actor.h5',
+    'logstd_path' : 'logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/models/180000/logstd.npy'
 }
 
 """
@@ -45,7 +45,7 @@ def generate_action(env, model, log_std, state):
     a_mu = model(K.expand_dims(state, axis=0))[0]
     dist = _get_dist(a_mu[0], log_std)
     unscaled_action = np.clip(dist.sample(), -1.0, 1.0)
-    return scale_action(env, a_mu)
+    return scale_action(env, unscaled_action)
 
 
 env = NormalizeWrapper(run_cfg['environment'],
@@ -60,12 +60,18 @@ observation, done = env.reset(), False
 frames = []
 steps, step_limit = 0, 1000
 while not done:
+    #env.render()
     frames.append(env.render(mode="rgb_array"))
     action = generate_action(env, model, logstd, observation)
     observation, _, done, _ = env.step(action)
     if done and steps < step_limit:
         observation, done = env.reset(), False
+    
+    if steps > step_limit:
+        break
+    
     steps += 1
+    print(steps)
 env.close()
 
 save_frames_as_gif(frames)

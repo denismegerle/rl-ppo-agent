@@ -1,6 +1,6 @@
 # Proximal Policy Optimization with state-of-the-art code level optimizations
 
-A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
+
 
 ## Implementation
 
@@ -50,6 +50,34 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
 - comment the agent...
 - embed gifs of working agents + learning rates/adv/rewards per step/episode for different tasks
 
+
+
+
+## Sample Runs
+
+### Custom Environments
+
+| Environment | Run | Episode Scores | Avg. Returns / Step |
+|-------------|-----|----------------|---------------------|
+|             | ![][contpoalrun]     |                |                     |
+|             |     |                |                     |
+|             |     |                |                     |
+
+---
+
+### Mujoco Environments
+
+---
+
+### Atari Environments
+
+---
+
+### SimFramework Environments
+
+---
+
+
 ## Dependencies
 
 - pip requirements
@@ -73,3 +101,6 @@ A basic, configurable CONTINUOUS PPO agent implemented in TF 2.2 (TF Keras).
 * _[5]_ Common Improvements -> *Engstrom, Logan, et al. "Implementation Matters in Deep RL: A Case Study on PPO and TRPO." International Conference on Learning Representations. 2019.*
 * _[6]_ StableBaselines3 -> *Raffin et al, "StableBaselines3", GitHub, https://github.com/DLR-RM/stable-baselines3*
 * _[7]_ ContCartpoalEnv -> *this environment is from Ian Danforth https://gist.github.com/iandanforth/e3ffb67cf3623153e968f2afdfb01dc8*
+
+
+[contpoalrun]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/gym_animation.gif "ContCartpoalEnv-Run"

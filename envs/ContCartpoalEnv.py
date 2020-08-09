@@ -24,6 +24,8 @@ class ContinuousCartPoleEnv(gym.Env):
     }
 
     def __init__(self, seed=None):
+        self.max_steps = 1000           # deem as "won" if we can not crash for max_steps steps
+        self.steps = 0
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -105,11 +107,18 @@ Any further steps are undefined behavior.
             self.steps_beyond_done += 1
             reward = 0.0
 
+        self.steps += 1
+        
+        # if self.steps == self.max_steps:
+        #     reward = 100.0
+        #     done = True
+            
         return np.array(self.state), reward, done, {}
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
+        self.steps = 0
         return np.array(self.state)
 
     def render(self, mode='human'):

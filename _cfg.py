@@ -115,15 +115,15 @@ cont_cartpoal_cfg = {
   'environment' : (lambda : ContinuousCartPoleEnv()),
   
   # ---- NET/TF CONFIG ----
-  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
-  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
   
   # ---- TRAINING ----
-  'epochs' : 3,
-  'batchsize' : 64,
+  'epochs' : 5,
+  'batchsize' : 32,
   'shuffle' : False,
   'permutate' : True,
-  'total_steps' : 1000000,
+  'total_steps' : 500000,
   'rollout' : 2048,
 }
 
@@ -133,7 +133,7 @@ reaching_dot_cfg = {
   'environment' : (lambda : ReachingDotEnv()),
 
   # ---- TRAINING ----
-  'total_steps' : 500000,
+  'total_steps' : 200000,
 }
 
 

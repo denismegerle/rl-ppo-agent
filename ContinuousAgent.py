@@ -105,8 +105,8 @@ class Agent(object):
     return tfd.Normal(loc=means, scale=K.exp(log_stds))
 
   def actor_choose(self, state):
-    a_mu = self.actor(K.expand_dims(state, axis=0))
-    dist = self._get_dist(a_mu[0], self.log_std_stateless)
+    a_mu = self.actor(K.expand_dims(state, axis=0))[0]
+    dist = self._get_dist(a_mu, self.log_std_stateless)
     unscaled_action = np.clip(dist.sample(), -1.0, 1.0)
 
     if self.cfg['scale_actions']:
@@ -304,7 +304,7 @@ class Agent(object):
 
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      #self.env.render()
+      # self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -324,7 +324,7 @@ class Agent(object):
         s, scores, observations, actions, done = self.env.reset(), [], [], [], False
         episode += 1
 
-      if self.step % self.cfg['model_save_interval'] == 0:
+      if self.step % self.cfg['model_save_interval'] == 0 or self.step == self.cfg['total_steps'] - 1:
         self.save_model(self.train_log_dir)
         
       if self.step % self.cfg['rollout'] == 0 and self.step > 0:
@@ -339,5 +339,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reaching_dot_cfg
+  agt_cfg = _cfg.cont_cartpoal_cfg
   Agent(cfg=agt_cfg).learn()
