@@ -64,6 +64,15 @@
 
 ---
 
+### Classic Control Environments
+
+| CartPole-v1  | Episode Scores / Steps   |  ...  | Episode Scores / Steps   |
+|------------------|--------------------------|------------------|--------------------------|
+| ... |   ...    | ... |   ...    |
+|                  |                          |                  |                          |
+
+---
+
 ### Mujoco Environments
 
 ---
