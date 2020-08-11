@@ -117,5 +117,5 @@
 [reachdotrun]: logs/ppoagent/ReachingDotEnv/20200809-162309/gym_animation.gif "ReachingDotEnv-Run"
 [reachdotscores]: logs/ppoagent/ReachingDotEnv/20200809-162309/epscores.png "ReachingDotEnv-Scores"
 
-[cartpolev1run]: logs/ppoagent/CartPole-v1/20200810-111514/epscores.png "CartPoleV1-Run"
+[cartpolev1run]: logs/ppoagent/CartPole-v1/20200810-111514/gym_animation.gif "CartPoleV1-Run"
 [cartpolev1scores]: logs/ppoagent/CartPole-v1/20200810-111514/epscores.png "CartPoleV1-Scores"
