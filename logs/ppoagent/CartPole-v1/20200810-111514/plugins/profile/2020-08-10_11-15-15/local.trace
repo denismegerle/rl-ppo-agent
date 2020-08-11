@@ -1,0 +1,42 @@
+
+I1E
+	/host:CPU1è/
+
+tf_Computeè/Ü&
+
+tf_ComputeÜ&
+ ” ”"*1 ”TFE_Py_FastPathExecute_CHà™˜EPà³Ø"$1 ”EagerExecute: FillH İ«LPà­õ")1 ”EagerLocalExecute: FillHÀÔâLP€œ²".1 ”ValidateInputTypeAndPlacementH º‡NPàÜ*"$1 ”EagerKernelExecuteHà¨õNP øú"1 ”	Fill:FillHàĞ¸PP€…Ÿ"'1 ”TFE_DeleteTensorHandleHàõäYPÀÏ$"(1 ”TFE_DeleteTensorHandleH °ş_P€¾’":1 ”&EagerExecute: __inference_tf_trace_453HàÈĞòAP ø‡"?1 ”+EagerLocalExecute: __inference_tf_trace_453H€À‡óAPàóÊ"21 ”EagerCopyToDeviceAndAddCacheKeyH ìÖóAPÀ›Ğ"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHà‚ˆöAPÀÏ$"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHàÀš÷APÀš"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH Å×÷APÀš"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHÀ¼øAPÀš"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHà³ÅøAPÀš"J1 ”8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€«üøAP "/1 ”ValidateInputTypeAndPlacementHàÊÓ“WP€Ôa"&1 ”EagerKernelExecuteH€–ì”WPà³µí"|1 ”FunctionRunHÀ££–WP ³™Z
+	step_name0Z
+id-2059653034140929198Z
+group_id0Z 
+name__inference_tf_trace_453")1 ”TFE_DeleteTensorHandleH€í«šYP Ë˜"(1 ”TFE_DeleteTensorHandleH€Ê‡œYPàÜ*"(1 ”TFE_DeleteTensorHandleH Ÿ^PÀÏ$"+1 ”TFE_Py_FastPathExecute_CHÀÆğ›^Pàıû"(1 ”TFE_DeleteTensorHandleH …–¡^PÀš"(1 ”TFE_DeleteTensorHandleH€—Ù¡^P "+1 ”EagerExecute: LogicalAndH€¶¢¢^P€øÉ"01 ”EagerLocalExecute: LogicalAndHÀ…Ç¢^PÀ¨¥"/1 ”ValidateInputTypeAndPlacementH€ô´£^P€µ"%1 ”EagerKernelExecuteH€Şå£^P ¨ô"(1 ”LogicalAnd:LogicalAndH Šµ¤^PÀÂÏ"+1 ”TFE_Py_FastPathExecute_CHÀ­¿¼^PÀº™")1 ”EagerExecute: IdentityHà©•À^PÀ¬€".1 ”EagerLocalExecute: IdentityH Ä¡À^Pà„î"/1 ”ValidateInputTypeAndPlacementH€ÖäÀ^P "%1 ”EagerKernelExecuteH€‹ıÀ^PÀ£†"#1 ”Identity:IdentityHàç§Á^P Â"+1 ”TFE_Py_FastPathExecute_CHÀ³¢Å^P µÉ"(1 ”TFE_DeleteTensorHandleH€Ã–ê^PàÜ*"(1 ”TFE_DeleteTensorHandleHÀÑ‘ñ^P€µ"-1 ”EagerExecute: WriteSummaryHÀè÷^PÀû"21 ”EagerLocalExecute: WriteSummaryH€àŒø^P€¿Ö"/1 ”ValidateInputTypeAndPlacementH ŒÜø^PÀš"%1 ”EagerKernelExecuteHÀÎúø^Pà¨Ö",1 ”WriteSummary:WriteSummaryH à½ù^PàÔô"(1 ”TFE_DeleteTensorHandleH€İõÿ^PÀ„="(1 ”TFE_DeleteTensorHandleHÀ–Ë€_P€µ"(1 ”TFE_DeleteTensorHandleH€æï€_P "(1 ”TFE_DeleteTensorHandleHÀÕ¡‡_P Â"(1 ”TFE_DeleteTensorHandleH€ÚŞ‡_PÀÏ$"(1 ”TFE_DeleteTensorHandleH€‡ÁŒ_Pà‘C"(1 ”TFE_DeleteTensorHandleHàÍœ_P "b1Ü&ExecutorState::ProcessHàúÕŠXPà®¹Z
+id-2059653034140929198Z
+iter_num0Z
+group_id0"U1Ü&4model_1/dense_4/MatMul/ReadVariableOp:ReadVariableOpH€Šä•XP ¨ôZ
+group_id0"b1Ü&ExecutorState::ProcessHÀ“À™XP –€Z
+id-2059653034140929198Z
+iter_num0Z
+group_id0"T1Ü&4model_1/dense_5/MatMul/ReadVariableOp:ReadVariableOpHÀığ™XPÀ„=Z
+group_id0"a1Ü&ExecutorState::ProcessH ùäšXPÀîmZ
+id-2059653034140929198Z
+iter_num0Z
+group_id0"T1Ü&4model_1/dense_3/MatMul/ReadVariableOp:ReadVariableOpHàÈ‰›XP ÷6Z
+group_id0"b1Ü&ExecutorState::ProcessHÀå›XPàÑİZ
+id-2059653034140929198Z
+iter_num0Z
+group_id0"U1Ü&5model_1/dense_3/BiasAdd/ReadVariableOp:ReadVariableOpHÀÄı›XPÀ„=Z
+group_id0"E1Ü&$model_1/dense_3/BiasAdd:_FusedMatMulH ÀñœXP€™Z
+group_id0":1Ü&model_1/dense_3/Tanh:TanhH€«µ¡XPà°ŒZ
+group_id0"E1Ü&$model_1/dense_4/BiasAdd:_FusedMatMulH «æ¢XPÀØZ
+group_id0"91Ü&model_1/dense_4/Tanh:TanhHÀ•È¤XP ÂZ
+group_id0"D1Ü&$model_1/dense_5/BiasAdd:_FusedMatMulH §‹¥XP€ÔaZ
+group_id0"b1è/ExecutorState::ProcessHÀôö˜XPà¹†Z
+id-2059653034140929198Z
+iter_num0Z
+group_id0"V1è/5model_1/dense_4/BiasAdd/ReadVariableOp:ReadVariableOpH€®Ì™XPà°ŒZ
+group_id0"a1è/ExecutorState::ProcessH€‹¨›XP ágZ
+id-2059653034140929198Z
+iter_num0Z
+group_id0"U1è/5model_1/dense_5/BiasAdd/ReadVariableOp:ReadVariableOpH€ÀÀ›XPÀ„=Z
+group_id0"B1è/ExecutorDoneCallbackH€Ÿ¤¨XPÀ¤ÊZ
+id-2059653034140929198

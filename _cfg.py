@@ -66,6 +66,7 @@ base_cfg = {
 
   'clip_observations' : 10.0,
   'clip_rewards' : 10.0,
+  'clip_eplength' : None,
   
   'gamma_env_normalization' : 0.99,
   
@@ -82,7 +83,7 @@ mujoco_base_cfg = {
   'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
   'critic_model' : _mlp_actor_net_orth(hidden_layers=[128, 128]),
   'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
-  
+
   # ---- LOSS CALCULATION ----
   'entropy_factor' : (lambda step: 0e-3),
   
@@ -99,7 +100,26 @@ mujoco_base_cfg = {
   'environment' : None
 }
 
-atari_base_cfg = {}
+atari_base_cfg = {
+  **base_cfg,
+
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : StepLambda(lambda step: 2.5e-4),
+  'adam_critic_alpha' : StepLambda(lambda step: 2.5e-4),
+  
+  # ---- LOSS CALCULATION ----
+  'ppo_clip' : (lambda step: 0.1),
+  'entropy_factor' : (lambda step: 1e-2),
+  
+  #'actor_regloss_factor' : 1e-4,
+  #'critic_regloss_factor' : 1e-4,
+  
+  # ---- TRAINING ----
+  'epochs' : 4,
+  'batchsize' : 4,
+  'total_steps' : 1000000,
+  'rollout' : 128,
+}
 
 
 # ------------------------------------------------ ENVIRONMENT EXAMPLES ------------------------------------------------
@@ -121,8 +141,6 @@ cont_cartpoal_cfg = {
   # ---- TRAINING ----
   'epochs' : 5,
   'batchsize' : 32,
-  'shuffle' : False,
-  'permutate' : True,
   'total_steps' : 500000,
   'rollout' : 2048,
 }
@@ -139,7 +157,61 @@ reaching_dot_cfg = {
   'total_steps' : 200000,
 }
 
+cartpole_v1_cfg = {
+  **base_cfg,
 
+  'environment' : (lambda : gym.make('CartPole-v1')),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  
+  # ---- TRAINING ----
+  'epochs' : 5,
+  'batchsize' : 32,
+  'total_steps' : 200000,
+  'rollout' : 2048
+}
+
+pendulum_v0_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : gym.make('Pendulum-v0')),
+
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4),
+
+  # ---- LOSS CALCULATION ----
+  'ppo_clip' : (lambda step: 0.3),
+  'entropy_factor' : (lambda step: 1e-3),
+
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+
+  # ---- TRAINING ----
+  'epochs' : 8,
+  'batchsize' : 32,
+  'total_steps' : 2000000,
+  'rollout' : 2048,
+
+  'gae_gamma' : 0.99,               # reward discount factor
+  'gae_lambda' : 0.95,               # smoothing for advantage, reducing variance in training
+
+  # ---- ENVIRONMENT ----
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : False,        # running variance normalization
+  'scale_actions' : True,
+}
+
+
+
+discr_test_cfg = {
+  **atari_base_cfg,
+
+  'environment' : (lambda : gym.make('BankHeist-ram-v0'))
+}
 """
 cont_ppo_test_split_cfg = {
   **base_cfg,

@@ -33,11 +33,18 @@ class Agent(object):
                                 clip_obs=self.cfg['clip_observations'], clip_reward=self.cfg['clip_rewards'],
                                 gamma=self.cfg['gamma_env_normalization'], epsilon=self.cfg['num_stab_envnorm'])
     
+    self.discrete = True if isinstance(self.env.action_space, gym.spaces.Discrete) else False   # only allowing Discrete and Box2D
+
+    # get dimensions of input / output dimension
     self.input_dim = self.env.observation_space.shape
-    self.n_actions = self.env.action_space.shape[0]
-    
-    self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
-    self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
+
+    if self.discrete:
+      self.n_actions = self.env.action_space.n
+    else:
+      self.n_actions = self.env.action_space.shape[0]
+      self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
+      self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
+
     
     if self.cfg['model_load_path_prefix']:
       self.load_model(self.cfg['model_load_path_prefix'])
@@ -102,16 +109,23 @@ class Agent(object):
     self.log_std_stateless = tf.Variable(np.load(f'{file_prefix}/logstd.npy'), trainable=True)
     
   def _get_dist(self, means, log_stds):
-    return tfd.Normal(loc=means, scale=K.exp(log_stds))
+    if self.discrete:
+      return tfd.Categorical(logits=means)
+    else:
+      return tfd.Normal(loc=means, scale=K.exp(log_stds))
 
   def actor_choose(self, state):
     a_mu = self.actor(K.expand_dims(state, axis=0))[0]
     dist = self._get_dist(a_mu, self.log_std_stateless)
-    unscaled_action = np.clip(dist.sample(), -1.0, 1.0)
 
-    if self.cfg['scale_actions']:
-      scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
-    else: scaled_action = unscaled_action
+    if self.discrete:
+      scaled_action = unscaled_action = dist.sample().numpy()
+    else:
+      unscaled_action = np.clip(dist.sample(), -1.0, 1.0)
+      
+      if self.cfg['scale_actions']:
+        scaled_action = self.action_space_means + unscaled_action * self.action_space_magnitude
+      else: scaled_action = unscaled_action
 
     return scaled_action, unscaled_action, a_mu
   
@@ -203,10 +217,14 @@ class Agent(object):
           batch_y_pred_mu = self.actor(batch_states)
           batch_y_pred_vest = self.critic(batch_states)
 
-          # in case of multiple actions p(a_0, ..., a_N) = p(a_0) * ... * p(a_N)
-          log_pi_new = K.sum(self._get_dist(batch_y_pred_mu, self.log_std_stateless).log_prob(batch_y_true_actions), axis=-1)
-          log_pi_old = K.sum(self._get_dist(batch_action_dist, old_log_std).log_prob(batch_y_true_actions), axis=-1)
-          
+          log_pi_new = self._get_dist(batch_y_pred_mu, self.log_std_stateless).log_prob(batch_y_true_actions)
+          log_pi_old = self._get_dist(batch_action_dist, old_log_std).log_prob(batch_y_true_actions)
+
+          # in case of multiple actions p(a_0, ..., a_N) = p(a_0) * ... * p(a_N) [only continuous case]
+          if not self.discrete:
+            log_pi_new = K.sum(log_pi_new, axis=-1)
+            log_pi_old = K.sum(log_pi_old, axis=-1)
+
           # loss calculation
           ppo_clip_loss = self._ppo_clip_loss(log_pi_new=log_pi_new, log_pi_old=log_pi_old, advantage=batch_advantage)
           entropy_loss = self.cfg['entropy_factor'](self.step) * self._entropy_loss(batch_y_pred_mu, self.log_std_stateless)
@@ -227,8 +245,9 @@ class Agent(object):
           self.tb_value_loss(value_loss)
           self.tb_critic_regloss(reg_loss_critic)
         
-        gradient = tape.gradient(actor_loss, [self.log_std_stateless])
-        self.actor_optimizer.apply_gradients(zip(gradient, [self.log_std_stateless]))
+        if not self.discrete:
+          gradient = tape.gradient(actor_loss, [self.log_std_stateless])
+          self.actor_optimizer.apply_gradients(zip(gradient, [self.log_std_stateless]))
 
         gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=self.cfg['clip_policy_gradient_norm'])
@@ -288,11 +307,14 @@ class Agent(object):
       obs = np.asarray(observations)
       for i in range(obs.shape[1]):
         tf.summary.histogram(f'env_metrics_obs/observation_{i}_per_episode', obs[:, i], step=episode)
-          
+      
       # action logging
-      acts = np.asarray(actions)
-      for i in range(acts.shape[1]):
-        tf.summary.histogram(f'env_metrics_acts/action_{i}_per_episode', acts[:, i], step=episode)
+      if self.discrete:
+        pass # TODO log actions for discrete envs
+      else:
+        acts = np.asarray(actions)
+        for i in range(acts.shape[1]):
+          tf.summary.histogram(f'env_metrics_acts/action_{i}_per_episode', acts[:, i], step=episode)
       
       # std logging
       for i in range(self.log_std_stateless.shape[0]):
@@ -315,11 +337,14 @@ class Agent(object):
 
       v_est = self.critic_evaluate(s)
       
+      if self.cfg['clip_eplength'] and len(observations) > self.cfg['clip_eplength'](self.step):
+        done = True
+
       self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
       s = s_
       
       # resetting environment if instance is terminated
-      if done:
+      if done: # TODO remove magic number
         self._log_episode(observations, actions, scores, episode, self.step)
         s, scores, observations, actions, done = self.env.reset(), [], [], [], False
         episode += 1
@@ -339,5 +364,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reaching_dot_cfg
+  agt_cfg = _cfg.pendulum_v0_cfg
   Agent(cfg=agt_cfg).learn()

@@ -66,9 +66,9 @@
 
 ### Classic Control Environments
 
-| CartPole-v1  | Episode Scores / Steps   |  ...  | Episode Scores / Steps   |
+| CartPole-v1      | Episode Scores / Steps   |  ...  | Episode Scores / Steps   |
 |------------------|--------------------------|------------------|--------------------------|
-| ... |   ...    | ... |   ...    |
+|![][cartpolev1run]|  ![][cartpolev1scores]   | ... |   ...    |
 |                  |                          |                  |                          |
 
 ---
@@ -111,7 +111,11 @@
 * _[7]_ ContCartpoalEnv -> *this environment is from Ian Danforth https://gist.github.com/iandanforth/e3ffb67cf3623153e968f2afdfb01dc8*
 
 
+<!-- links -->
 [contpoalrun]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/gym_animation.gif "ContCartpoalEnv-Run"
 [contpoalscores]: logs/ppoagent/ContinuousCartPoleEnv/20200809-022339/epscores.png "ContCartpoalEnv-Scores"
 [reachdotrun]: logs/ppoagent/ReachingDotEnv/20200809-162309/gym_animation.gif "ReachingDotEnv-Run"
 [reachdotscores]: logs/ppoagent/ReachingDotEnv/20200809-162309/epscores.png "ReachingDotEnv-Scores"
+
+[cartpolev1run]: logs/ppoagent/CartPole-v1/20200810-111514/epscores.png "CartPoleV1-Run"
+[cartpolev1scores]: logs/ppoagent/CartPole-v1/20200810-111514/epscores.png "CartPoleV1-Scores"

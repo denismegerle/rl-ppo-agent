@@ -1,3 +1,5 @@
+import gym
+
 import numpy as np
 import tensorflow as tf
 
@@ -48,7 +50,10 @@ class NormalizeWrapper(VecNormalize):
     return [x[0] for x in super().step([action])]
   
   def get_name(self):
-    return type(self.envs[0]).__name__
+    if isinstance(self.envs[0], gym.wrappers.TimeLimit):
+      return self.envs[0].unwrapped.spec.id
+    else:
+      return type(self.envs[0]).__name__
 
 
 class RunningMeanStd(object):
