@@ -113,9 +113,9 @@
 
 <!-- links -->
 [contpoalrun]: logs/ppoagent/ContinuousCartPoleEnv/20200813-014433/gym_animation.gif "ContCartpoalEnv-Run"
-[contpoalscores]: logs/ppoagent/ContinuousCartPoleEnv/20200813-014433/epscores.png "ContCartpoalEnv-Scores"
+[contpoalscores]: logs/ppoagent/ContinuousCartPoleEnv/20200813-014433/scores.png "ContCartpoalEnv-Scores"
 [reachdotrun]: logs/ppoagent/ReachingDotEnv/20200813-003741/gym_animation.gif "ReachingDotEnv-Run"
-[reachdotscores]: logs/ppoagent/ReachingDotEnv/20200813-003741/epscores.png "ReachingDotEnv-Scores"
+[reachdotscores]: logs/ppoagent/ReachingDotEnv/20200813-003741/scores.png "ReachingDotEnv-Scores"
 
 [cartpolev1run]: logs/ppoagent/CartPole-v1/20200813-022551/gym_animation.gif "CartPoleV1-Run"
-[cartpolev1scores]: logs/ppoagent/CartPole-v1/20200813-022551/epscores.png "CartPoleV1-Scores"
+[cartpolev1scores]: logs/ppoagent/CartPole-v1/20200813-022551/scores.png "CartPoleV1-Scores"
