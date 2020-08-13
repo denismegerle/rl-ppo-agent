@@ -1,20 +1,27 @@
-from matplotlib import animation
+import gym
+
 import matplotlib.pyplot as plt
-import gym 
-from envs.ContCartpoalEnv import ContinuousCartPoleEnv
-import tensorflow.keras.backend as K
-import tensorflow as tf
-#import mujoco_py
-from tensorflow_probability import distributions as tfd
 import numpy as np
-from _utils import NormalizeWrapper
+import tensorflow as tf
+
+import tensorflow.keras.backend as K
+
+from matplotlib import animation
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from tensorflow_probability import distributions as tfd
+
+#import mujoco_py
 import _cfg
+from _utils import NormalizeWrapper
+
+
+
 
 run_cfg = {
-    **_cfg.pendulum_v0_cfg,
+    **_cfg.reaching_dot_cfg,
 
-    'actor_path': 'logs/ppoagent/Pendulum-v0/20200811-073758/models/999999/actor.h5',
-    'logstd_path' : 'logs/ppoagent/Pendulum-v0/20200811-073758/models/999999/logstd.npy'
+    'generate_gif' : True,
+    'load_prefix': 'logs/ppoagent/ReachingDotEnv/20200813-003741/models/199999',
 }
 
 """
@@ -60,34 +67,35 @@ def generate_action(env, model, log_std, state, discrete, scale):
 
     return scaled_action
 
-
-env = NormalizeWrapper(run_cfg['environment'],
-                    norm_obs=False, norm_reward=run_cfg['normalize_rewards'],
-                    clip_obs=10.0, clip_reward=run_cfg['clip_rewards'],
-                    gamma=run_cfg['gamma_env_normalization'], epsilon=run_cfg['num_stab_envnorm'])
+# reloading environment and status
+env = NormalizeWrapper.load(f"{run_cfg['load_prefix']}/env.pkl", run_cfg['environment'])
 discrete = True if isinstance(env.action_space, gym.spaces.Discrete) else False
 
-model = tf.keras.models.load_model(f"{run_cfg['actor_path']}", compile=True)
-logstd = np.load(f"{run_cfg['logstd_path']}")
+# reloading policy model
+model = tf.keras.models.load_model(f"{run_cfg['load_prefix']}/actor.h5", compile=False)
+logstd = np.load(f"{run_cfg['load_prefix']}/logstd.npy")
 
-observation, done = env.reset(), False
-frames = []
-steps, step_limit = 0, 500
+# running a simulation of
+observation, done, frames = env.reset(), False, []
+steps, STEP_LIMIT = 0, 1000
 while not done:
     env.render()
-    #frames.append(env.render(mode="rgb_array"))
+    
+    if run_cfg['generate_gif']:
+        frames.append(env.render(mode="rgb_array"))
 
     action = generate_action(env, model, logstd, observation, discrete, run_cfg['scale_actions'])
     observation, _, done, _ = env.step(action)
 
-    if done and steps < step_limit:
+    if done and steps < STEP_LIMIT:
         observation, done = env.reset(), False
     
-    if steps >= step_limit:
+    if steps >= STEP_LIMIT:
         break
     
     steps += 1
     print(steps)
 env.close()
 
-#save_frames_as_gif(frames)
+if run_cfg['generate_gif']:
+    save_frames_as_gif(frames)

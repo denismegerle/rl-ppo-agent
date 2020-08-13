@@ -47,7 +47,8 @@ class NormalizeWrapper(VecNormalize):
     return super().reset()[0]
   
   def step(self, action):
-    return [x[0] for x in super().step([action])]
+    s, r, d, i = [x[0] for x in super().step([action])]
+    return [s, r, d, i]
   
   def get_name(self):
     if isinstance(self.envs[0], gym.wrappers.TimeLimit):
@@ -55,7 +56,32 @@ class NormalizeWrapper(VecNormalize):
     else:
       return type(self.envs[0]).__name__
 
+  @staticmethod
+  def load(load_path, venv):
+    dummy_venv = DummyVecEnv([venv])
+    return super(NormalizeWrapper, NormalizeWrapper).load(load_path, dummy_venv)
 
+# class RewardShapingWrapper(gym.Env):
+  
+#   def __init__(self, env, reward_function):
+#     self.env = env
+#     self.reward_function = reward_function
+  
+#   def seed(self, seed=None):
+#     return self.env.seed(seed)
+  
+#   def step(self, action):
+#     s, r, d, i = self.env.step(action)
+#     r = self.reward_function(s, r)
+#     return s, r, d, i
+  
+#   def reset(self):
+#     return self.env.reset()
+  
+#   def render(self, mode='human'):
+#     return self.env.render(mode)
+    
+  
 class RunningMeanStd(object):
   
   def __init__(self, shape=()):

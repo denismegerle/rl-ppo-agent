@@ -102,11 +102,13 @@ class Agent(object):
     tf.keras.models.save_model(self.actor, f'{file_prefix}/actor.h5', overwrite=True, include_optimizer=False, save_format='h5')
     tf.keras.models.save_model(self.actor, f'{file_prefix}/critic.h5', overwrite=True, include_optimizer=False, save_format='h5')
     np.save(f'{file_prefix}/logstd.npy', self.log_std_stateless.numpy())
+    self.env.save(f'{file_prefix}/env.pkl')
   
   def load_model(self, file_prefix):
     self.actor = tf.keras.models.load_model(f'{file_prefix}/actor.h5', compile=False)
     self.critic = tf.keras.models.load_model(f'{file_prefix}/critic.h5', compile=False)
     self.log_std_stateless = tf.Variable(np.load(f'{file_prefix}/logstd.npy'), trainable=True)
+    self.env = NormalizeWrapper.load(f'{file_prefix}/env.pkl', self.cfg['environment'])
     
   def _get_dist(self, means, log_stds):
     if self.discrete:
@@ -344,7 +346,7 @@ class Agent(object):
       s = s_
       
       # resetting environment if instance is terminated
-      if done: # TODO remove magic number
+      if done:
         self._log_episode(observations, actions, scores, episode, self.step)
         s, scores, observations, actions, done = self.env.reset(), [], [], [], False
         episode += 1
@@ -364,5 +366,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.pendulum_v0_cfg
+  agt_cfg = _cfg.cartpole_v1_cfg
   Agent(cfg=agt_cfg).learn()
