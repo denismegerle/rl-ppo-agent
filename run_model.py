@@ -3,14 +3,13 @@ import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-
 import tensorflow.keras.backend as K
 
 from matplotlib import animation
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from tensorflow_probability import distributions as tfd
 
-#import mujoco_py
+# config and local imports
 import _cfg
 from _utils import NormalizeWrapper
 
@@ -18,10 +17,11 @@ from _utils import NormalizeWrapper
 
 
 run_cfg = {
-    **_cfg.reaching_dot_cfg,
+    **_cfg.reach_env_nonrandom_cfg,
 
-    'generate_gif' : True,
-    'load_prefix': 'logs/ppoagent/ReachingDotEnv/20200813-003741/models/199999',
+    'render' : False,
+    'generate_gif' : False,
+    'load_prefix': 'logs/ppoagent/ReachEnv/20200813-043259/models/499999',
 }
 
 """
@@ -77,9 +77,10 @@ logstd = np.load(f"{run_cfg['load_prefix']}/logstd.npy")
 
 # running a simulation of
 observation, done, frames = env.reset(), False, []
-steps, STEP_LIMIT = 0, 1000
+steps, STEP_LIMIT = 0, 500
 while not done:
-    env.render()
+    if run_cfg['render']:
+        env.render()
     
     if run_cfg['generate_gif']:
         frames.append(env.render(mode="rgb_array"))

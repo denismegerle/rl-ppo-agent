@@ -83,6 +83,11 @@
 
 ### SimFramework Environments
 
+| ReachEnv-v0      | Episode Scores / Steps   |   ...    |  Episode Scores / Steps  |
+|------------------|--------------------------|------------------|--------------------------|
+|![][reachenvnorun]|  ![][reachenvnoscores]   | ... |  ...   |
+|                  |                          |                  |                          |
+
 ---
 
 
@@ -121,3 +126,6 @@
 [cartpolev1scores]: logs/ppoagent/CartPole-v1/20200813-022551/scores.png "CartPoleV1-Scores"
 [pendulumv0run]: logs/ppoagent/Pendulum-v0/20200814-044336/gym_animation.gif "PendulumV0-Run"
 [pendulumv0scores]: logs/ppoagent/Pendulum-v0/20200814-044336/scores.png "PendulumV0-Scores"
+
+[reachenvnorun]: logs/ppoagent/ReachEnv/20200813-043259/gym_animation.gif "ReachEnvNoRandom-Run"
+[reachenvnoscores]: logs/ppoagent/ReachEnv/20200813-043259/scores.png "ReachEnvNoRandom-Scores"

@@ -194,27 +194,27 @@ pendulum_v0_cfg = {
   'gae_lambda' : 0.95,               # smoothing for advantage, reducing variance in training
 }
 
-# reach_env_nonrandom_cfg = {
-#   **base_cfg,
+reach_env_nonrandom_cfg = {
+  **base_cfg,
   
-#   'environment' : (lambda : ReachEnv(max_steps=50, render=False, randomize_objects=False)),
+  'environment' : (lambda : ReachEnv(max_steps=50, render=False, randomize_objects=False)),
   
-#   # ---- NET/TF CONFIG ----
-#   'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
-#   'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
 
-#   # ---- LOSS CALCULATION ----
-#   'entropy_factor' : (lambda step: 1e-3),
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
   
-#   'actor_regloss_factor' : 0e-4,
-#   'critic_regloss_factor' : 0e-4,
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
   
-#   # ---- TRAINING ----
-#   'epochs' : 10,
-#   'batchsize' : 32,
-#   'total_steps' : 500000,
-#   'rollout' : 2048,
-# }
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 32,
+  'total_steps' : 500000,
+  'rollout' : 2048,
+}
 
 
 # ------------------------------------------------ TODO ENVIRONMENT EXAMPLES ------------------------------------------------
