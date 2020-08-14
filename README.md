@@ -66,9 +66,9 @@
 
 ### Classic Control Environments
 
-| CartPole-v1      | Episode Scores / Steps   |  ...  | Episode Scores / Steps   |
+| CartPole-v1      | Episode Scores / Steps   |   Pendulum-v0    |  Episode Scores / Steps  |
 |------------------|--------------------------|------------------|--------------------------|
-|![][cartpolev1run]|  ![][cartpolev1scores]   | ... |   ...    |
+|![][cartpolev1run]|  ![][cartpolev1scores]   |![][pendulumv0run]|  ![][pendulumv0scores]   |
 |                  |                          |                  |                          |
 
 ---
@@ -119,3 +119,5 @@
 
 [cartpolev1run]: logs/ppoagent/CartPole-v1/20200813-022551/gym_animation.gif "CartPoleV1-Run"
 [cartpolev1scores]: logs/ppoagent/CartPole-v1/20200813-022551/scores.png "CartPoleV1-Scores"
+[pendulumv0run]: logs/ppoagent/Pendulum-v0/20200814-044336/gym_animation.gif "PendulumV0-Run"
+[pendulumv0scores]: logs/ppoagent/Pendulum-v0/20200814-044336/scores.png "PendulumV0-Scores"

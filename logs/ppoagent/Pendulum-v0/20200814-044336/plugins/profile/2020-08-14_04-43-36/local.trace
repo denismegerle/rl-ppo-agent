@@ -1,0 +1,36 @@
+
+a1]
+	/host:CPU1„f
+
+tf_Compute„f
+”…”…Øª
+
+tf_ComputeØª„S
+
+tf_Compute„S"+1”…TFE_Py_FastPathExecute_CH ‡ûP€Ëœ"%1”…EagerExecute: FillH€¡ãÿP€öö"*1”…EagerLocalExecute: FillH€‹”€Pàş¿"/1”…ValidateInputTypeAndPlacementH€É¦P Â"%1”…EagerKernelExecuteHÀåºŒPàÔô"1”…	Fill:FillHÀ£ÍP€’ô"(1”…TFE_DeleteTensorHandleH€¥ó•P Â"(1”…TFE_DeleteTensorHandleHÀÍ˜šP€‰z"<1”…&EagerExecute: __inference_tf_trace_279H€şá‡ûP Š×Ñ"A1”…+EagerLocalExecute: __inference_tf_trace_279H ª±ˆûPà›éŒÑ"31”…EagerCopyToDeviceAndAddCacheKeyH€¦¥‰ûP Ê"K1”…8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH äè‹ûPÀÏ$"K1”…8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€ÿ¥ûPÀš"K1”…8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€ïûPÀš"K1”…8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHàäÊûPÀš"01”…ValidateInputTypeAndPlacementH ÀäıµPÀîm"'1”…EagerKernelExecuteH ÀÿµP€Ãµ”"}1”…FunctionRunH Îı¶PÀ†®­Z
+	step_name0Z
+id-6572929411791190521Z
+group_id0Z 
+name__inference_tf_trace_279"*1”…TFE_DeleteTensorHandleHà•ÚÇÌPàÔô"*1”…TFE_DeleteTensorHandleH …ŒÎÌP Ë˜")1”…TFE_DeleteTensorHandleHà¨ÑØPÀîm",1”…TFE_Py_FastPathExecute_CH€ıäëØPà©„<")1”…TFE_DeleteTensorHandleH ÷çüØP€µ")1”…TFE_DeleteTensorHandleHàÏ†şØP ",1”…EagerExecute: LogicalAndHà™ÿØPàğÛ%"11”…EagerLocalExecute: LogicalAndH€ºèÿØP€ª€%"01”…ValidateInputTypeAndPlacementH€……˜ÙP€ê0"&1”…EagerKernelExecuteHà€ù˜ÙP ù¾")1”…LogicalAnd:LogicalAndHÀæšÙPàÃÄ",1”…TFE_Py_FastPathExecute_CH »üÏÙP ­È"*1”…EagerExecute: IdentityH à¨ÙÙP€ˆë"/1”…EagerLocalExecute: IdentityH€½ÓÙÙP€º"01”…ValidateInputTypeAndPlacementHàı€êÙP Â"&1”…EagerKernelExecuteHÀÄêÙP ‰«"$1”…Identity:IdentityHÀã¥ëÙPà‘C",1”…TFE_Py_FastPathExecute_CHàÁöóÙPÀ›Ğ")1”…TFE_DeleteTensorHandleH€óÎ¨ÚPà‘C")1”…TFE_DeleteTensorHandleHÀªÑ¶ÚPÀÏ$")1”…TFE_DeleteTensorHandleH °¸ÖÚP€ê0"/1”…EagerExecute: WriteSummaryH€ÄƒâÚP ¦µ"41”…EagerLocalExecute: WriteSummaryH »ºâÚPÀ”Ú´"01”…ValidateInputTypeAndPlacementHÀˆÛîÚP Â"'1”…EagerKernelExecuteH šïÚPàîš§".1”…WriteSummary:WriteSummaryH £˜ğÚPà§¥"*1”…TFE_DeleteTensorHandleHÀøêœİPÀá˜")1”…TFE_DeleteTensorHandleHÀÈñŸİP€Ôa")1”…TFE_DeleteTensorHandleHÀÑë İP€µ")1”…TFE_DeleteTensorHandleHÀ®üºİP€ŸI")1”…TFE_DeleteTensorHandleH ÿ•ÂİP€ŸI")1”…TFE_DeleteTensorHandleHà×´ÃİP€Ôa"*1”…TFE_DeleteTensorHandleHàŞÛÑİPàÏÕ")1”…TFE_DeleteTensorHandleHà¥èÓİPà§"d1„fExecutorState::ProcessHà•–ÒÂPàÀ¿„Z
+id-6572929411791190521Z
+iter_num0Z
+group_id0"U1„f3model/dense_1/BiasAdd/ReadVariableOp:ReadVariableOpHÀÇøÌÄPàØÏZ
+group_id0"c1„fExecutorState::ProcessHÀßÏ×ÄP€ü¤Z
+id-6572929411791190521Z
+iter_num0Z
+group_id0"T1„f2model/dense_1/MatMul/ReadVariableOp:ReadVariableOpH ¦«ØÄPà°ŒZ
+group_id0"d1„SExecutorState::ProcessHàšÇÉÄP Ú¯ÂZ
+id-6572929411791190521Z
+iter_num0Z
+group_id0"R1„S0model/dense/MatMul/ReadVariableOp:ReadVariableOpHÀ¾şËÄPÀİ½Z
+group_id0"C1„S model/dense/BiasAdd:_FusedMatMulH ‹§†ÅP€¬¹íZ
+group_id0"71„Smodel/dense/Tanh:TanhHà·ÂöÇPà’‡Z
+group_id0"D1„S"model/dense_1/BiasAdd:_FusedMatMulH€¹·ıÇPà¬±Z
+group_id0"91„Smodel/dense_1/Tanh:TanhHà¹ÊÈP ŸúZ
+group_id0"D1„SExecutorDoneCallbackHÀ˜ıŒÈPÀ˜€šZ
+id-6572929411791190521"d1ØªExecutorState::ProcessH ŠùÏÄPÀŞ
+Z
+id-6572929411791190521Z
+iter_num0Z
+group_id0"T1Øª1model/dense/BiasAdd/ReadVariableOp:ReadVariableOpH€ÚÎÑÄP€Ğ†Z
+group_id0

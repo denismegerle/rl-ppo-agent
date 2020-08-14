@@ -167,6 +167,33 @@ cartpole_v1_cfg = {
   'rollout' : 2048
 }
 
+pendulum_v0_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : gym.make('Pendulum-v0')),
+
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(1e-3, 100000, 0.5, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(1e-3, 100000, 0.5, staircase=False),
+  'actor_model' : _mlp_actor_net_orth([64]),
+  'critic_model' : _mlp_critic_net_orth([64]),
+
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 0e-3),
+
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+
+  # ---- TRAINING ----
+  'epochs' : 4,
+  'batchsize' : 32,
+  'total_steps' : 5000000,
+  'rollout' : 256,
+
+  'gae_gamma' : 0.95,               # reward discount factor
+  'gae_lambda' : 0.95,               # smoothing for advantage, reducing variance in training
+}
+
 # reach_env_nonrandom_cfg = {
 #   **base_cfg,
   
@@ -195,40 +222,6 @@ half_cheetah_v2_cfg = {
   **mujoco_base_cfg,
   
   'environment' : (lambda : gym.make('HalfCheetah-v2')),
-}
-
-pendulum_v0_cfg = {
-  **base_cfg,
-
-  'environment' : (lambda : gym.make('Pendulum-v0')),
-
-  # ---- NET/TF CONFIG ----
-  'adam_actor_alpha' : StepLambda(lambda step: 3e-4),
-  'adam_critic_alpha' : StepLambda(lambda step: 3e-4),
-
-  # ---- LOSS CALCULATION ----
-  'ppo_clip' : (lambda step: 0.3),
-  'entropy_factor' : (lambda step: 1e-3),
-
-  'actor_regloss_factor' : 0e-4,
-  'critic_regloss_factor' : 0e-4,
-
-  # ---- TRAINING ----
-  'epochs' : 8,
-  'batchsize' : 32,
-  'total_steps' : 2000000,
-  'rollout' : 2048,
-
-  'gae_gamma' : 0.99,               # reward discount factor
-  'gae_lambda' : 0.95,               # smoothing for advantage, reducing variance in training
-
-  # ---- ENVIRONMENT ----
-  'normalize_advantages' : True,     # minibatch advantage normalization
-  'normalize_observations' : True,   # running mean + variance normalization
-  'normalize_rewards' : False,        # running variance normalization
-  'scale_actions' : True,
-  
-  'clip_eplength' : (lambda step: 100)
 }
 
 mountaincar_v0_cfg = {
