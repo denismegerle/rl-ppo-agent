@@ -21,7 +21,7 @@ from tqdm import tqdm
 import _cfg
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
 
-
+from _nets import _mlp_forward_dynamics
 
 # -----------------------------------------------------------------------------------------------------------
 class Agent(object):
@@ -45,7 +45,7 @@ class Agent(object):
       self.action_space_means = (self.env.action_space.high + self.env.action_space.low) / 2.0
       self.action_space_magnitude = (self.env.action_space.high - self.env.action_space.low) / 2.0
 
-    
+    ## INITING ACTOR AND CRITIC
     if self.cfg['model_load_path_prefix']:
       self.load_model(self.cfg['model_load_path_prefix'])
     else:
@@ -55,6 +55,17 @@ class Agent(object):
     
     self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
     self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
+
+    ## INITING FORWARD AND INVERSE MODEL
+    self.emb_size = 4
+    self.x1 = None
+
+    self.forward = _mlp_forward_dynamics([128, 128, 128])((self.input_dim[0], self.n_actions), self.input_dim[0])
+    self.forward.compile(
+      optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+      loss=tf.keras.losses.MeanSquaredError(),
+      metrics=[tf.keras.metrics.MeanSquaredError()]
+    )
 
     ## MEMORY
     self._reset_memory()
@@ -259,11 +270,35 @@ class Agent(object):
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
   def train(self):
+    x1, x2 = np.asarray(self.state_memory)[:-1], np.asarray(self.action_memory)[:-1]
+    # if discrete, to onehot
+    x2 = K.one_hot(x2, self.n_actions)
+
+    y1_pred, y1_true = self.forward([x1, x2]), np.asarray(self.state_memory)[1:]
+    eta = 2.0
+    curiosity = 0.5 * eta * np.sum(np.square(y1_pred - y1_true), axis=1)
+    curiosity = np.append(curiosity, 0.0)
+    self.reward_memory = list(np.asarray(self.reward_memory) + curiosity)
+
     # calculate returns and advantages
     self.returns, self.advantages = self._calculate_returns_and_advantages(self.v_est_memory, self.reward_memory, self.not_done_memory)
     
     # train agent
     self._train(self.state_memory, self.action_memory, self.action_dist_memory, self.returns, self.advantages, self.v_est_memory)
+
+    # train forward / inverse model 
+    if self.x1 is not None:
+      self.x1 = np.concatenate((self.x1, x1))
+      self.x2 = np.concatenate((self.x2, x2))
+      self.y1 = np.concatenate((self.y1, y1_true))
+      print(self.x1.shape)
+    else:
+      self.x1, self.x2, self.y1 = x1, x2, y1_true
+      print(self.x1.shape)
+    
+    history = self.forward.fit(x=[self.x1, self.x2], y=self.y1, batch_size=64, epochs=1, verbose=4, shuffle=True) 
+    print(history.history['loss'])
+
     self._log_training()
     self._reset_memory()
 
@@ -328,7 +363,7 @@ class Agent(object):
 
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      #self.env.render()
+      self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -366,5 +401,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reach_env_nonrandom_cfg
+  agt_cfg = _cfg.mountaincar_v0_cfg
   Agent(cfg=agt_cfg).learn()

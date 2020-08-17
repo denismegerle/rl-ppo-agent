@@ -10,7 +10,7 @@ from _nets import _mlp_actor_net_orth, _mlp_critic_net_orth
 from _utils import RolloutInverseTimeDecay, StepLambda
 
 
-IMPORT_SIM_FRAMEWORK = True
+IMPORT_SIM_FRAMEWORK = False
 if IMPORT_SIM_FRAMEWORK:
   sys.path.append('../SimulationFramework/simulation/src/')
   sys.path.append('../SimulationFramework/simulation/src/gym_envs/mujoco/')
@@ -149,6 +149,10 @@ reaching_dot_cfg = {
   
   # ---- TRAINING ----
   'total_steps' : 200000,
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
 }
 
 cartpole_v1_cfg = {
@@ -237,9 +241,9 @@ mountaincar_v0_cfg = {
   
   # ---- TRAINING ----
   'epochs' : 4,
-  'batchsize' : 16,
+  'batchsize' : 32,
   'total_steps' : 1000000,
-  'rollout' : 16,
+  'rollout' : 256,
 
   'gae_gamma' : 0.99,               # reward discount factor
   'gae_lambda' : 0.98,               # smoothing for advantage, reducing variance in training
