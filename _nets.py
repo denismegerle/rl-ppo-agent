@@ -46,11 +46,30 @@ def _mlp_critic_net_orth(hidden_layers=[64, 64]):
                       bias_initializer=const_bias_initializer(0.0),
                       kernel_regularizer=l2_regularizer())(x)
     
-    v_est = Dense(output_dim,   activation=None,
+    v_est_ext = Dense(output_dim,   activation=None,
+                              kernel_initializer=orth_weights_initializer(1.0), 
+                              bias_initializer=const_bias_initializer(0.0),
+                              kernel_regularizer=l2_regularizer())(x)
+
+    v_est_int = Dense(output_dim,   activation=None,
                               kernel_initializer=orth_weights_initializer(1.0), 
                               bias_initializer=const_bias_initializer(0.0),
                               kernel_regularizer=l2_regularizer())(x)
     
-    return Model(inputs=state, outputs=[v_est])
+    return Model(inputs=state, outputs=[v_est_ext, v_est_int])
+
+  return network_func
+
+def _mlp_siso(hidden_layers=[256, 256]):
+  def network_func(input_dim, output_dim):
+    state = Input(shape=input_dim)
+    
+    x = state
+    for i in range(len(hidden_layers)):
+      x = Dense(hidden_layers[i],  activation='relu')(x)
+    
+    emb_state = Dense(output_dim)(x)
+    
+    return Model(inputs=[state], outputs=[emb_state])
 
   return network_func

@@ -21,7 +21,8 @@ from tqdm import tqdm
 import _cfg
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
 
-
+from _nets import _mlp_siso
+from sklearn.preprocessing import StandardScaler
 
 # -----------------------------------------------------------------------------------------------------------
 class Agent(object):
@@ -55,6 +56,18 @@ class Agent(object):
     
     self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
     self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
+
+    ## INTRINSTIC REWARD GENERATION
+    self.target = _mlp_siso()(self.input_dim, self.input_dim[0])
+    self.target.build(self.input_dim)
+    self.predictor = _mlp_siso()(self.input_dim, self.input_dim[0])
+    self.predictor.compile(
+      optimizer=tf.keras.optimizers.Adam(learning_rate=1e-6),
+      loss=tf.keras.losses.MeanSquaredError(),
+      metrics=tf.keras.metrics.MeanSquaredError()
+    )
+
+    self.ir_normalizer = StandardScaler(with_mean=False, with_std=True)
 
     ## MEMORY
     self._reset_memory()
@@ -132,15 +145,15 @@ class Agent(object):
     return scaled_action, unscaled_action, a_mu
   
   def critic_evaluate(self, state):
-    return self.critic(K.expand_dims(state, axis=0))[0]
+    return self.critic(K.expand_dims(state, axis=0))
 
   def store_transition(self, state, action, action_dist, reward, v_est, not_done):
     self.state_memory.append(state), self.not_done_memory.append(not_done)
     self.action_memory.append(action), self.action_dist_memory.append(action_dist)
     self.reward_memory.append(reward), self.v_est_memory.append(v_est)
 
-  def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones):
-    vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
+  def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones, last_vest):
+    vests, rews, notdones = np.asarray(v_ests + [last_vest]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
     
     # calculate actual returns (discounted rewards) based on observation
     def discounted_return_fn(accumulated_discounted_reward, reward_discount):
@@ -148,7 +161,7 @@ class Agent(object):
       return accumulated_discounted_reward * discount + reward
     
     discounts = self.cfg['gae_gamma'] * notdones
-    returns = npscanr(discounted_return_fn, self.last_vest_buffer, list(zip(rews, discounts)))
+    returns = npscanr(discounted_return_fn, last_vest, list(zip(rews, discounts)))
 
     # calculate actual advantages based on td residual (see gae paper, eq. 16)
     def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
@@ -185,10 +198,12 @@ class Agent(object):
       return tf.math.add_n(self.actor.losses)
     else : return 0.0
   
-  def _train(self, states, actions, actions_dist, returns, advantages, v_ests):
+  def _train(self, states, actions, actions_dist, ext_returns, ext_advantages, int_returns, int_advantages, v_ests_ext, v_ests_int):
     x_states, y_true_actions_dist = states, actions_dist
-    y_true_actions, y_pred_vest_old, y_true_returns = actions, v_ests, returns
+    y_true_actions, y_pred_vest_ext_old, y_pred_vest_int_old, y_true_int_returns, y_true_ext_returns = actions, v_ests_ext, v_ests_int, int_returns, ext_returns
     old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
+
+    advantages = (np.asarray(ext_advantages) + np.asarray(int_advantages)).tolist()
 
     sample_amt = len(self.action_memory)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['batchsize']
@@ -206,18 +221,23 @@ class Agent(object):
         
         batch_states = np.asarray([x_states[i] for i in sample_idx])
         batch_action_dist = np.asarray([y_true_actions_dist[i] for i in sample_idx])
-        
         batch_y_true_actions = np.asarray([y_true_actions[i] for i in sample_idx])
-        batch_y_true_returns = np.asarray([y_true_returns[i] for i in sample_idx])
+
+        batch_y_true_int_returns = np.asarray([y_true_int_returns[i] for i in sample_idx])
+        batch_y_true_ext_returns = np.asarray([y_true_ext_returns[i] for i in sample_idx])
         batch_advantage = np.asarray([advantages[i] for i in sample_idx])
-        batch_y_pred_vest_old = np.asarray([y_pred_vest_old[i] for i in sample_idx])
+        batch_y_pred_vest_int_old = np.asarray([y_pred_vest_int_old[i] for i in sample_idx])
+        batch_y_pred_vest_ext_old = np.asarray([y_pred_vest_ext_old[i] for i in sample_idx])
+        #TODO remove
+        batch_y_pred_vest_int_old = np.reshape(batch_y_pred_vest_int_old, newshape=(-1, 1))
+        batch_y_pred_vest_ext_old = np.reshape(batch_y_pred_vest_ext_old, newshape=(-1, 1))
         
         if self.cfg['normalize_advantages']:
           batch_advantage = (batch_advantage - batch_advantage.mean()) / np.maximum(batch_advantage.std(), self.cfg['num_stab_advnorm'])
         
         with tf.GradientTape(persistent=True) as tape:
           batch_y_pred_mu = self.actor(batch_states)
-          batch_y_pred_vest = self.critic(batch_states)
+          batch_y_pred_vest_ext, batch_y_pred_vest_int = self.critic(batch_states)
 
           log_pi_new = self._get_dist(batch_y_pred_mu, self.log_std_stateless).log_prob(batch_y_true_actions)
           log_pi_old = self._get_dist(batch_action_dist, old_log_std).log_prob(batch_y_true_actions)
@@ -233,7 +253,9 @@ class Agent(object):
           reg_loss_actor = self.cfg['actor_regloss_factor'] * self._reg_loss(self.actor)
           actor_loss = ppo_clip_loss + entropy_loss + reg_loss_actor
           
-          value_loss = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest, batch_y_pred_vest_old, batch_y_true_returns)
+          value_loss_ext = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest_ext, batch_y_pred_vest_ext_old, batch_y_true_ext_returns)
+          value_loss_int = self.cfg['value_loss_factor'] * self._value_loss(batch_y_pred_vest_int, batch_y_pred_vest_int_old, batch_y_true_int_returns)
+          value_loss = value_loss_ext + value_loss_int
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
           critic_loss = value_loss + reg_loss_critic
           
@@ -259,11 +281,34 @@ class Agent(object):
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
   def train(self):
-    # calculate returns and advantages
-    self.returns, self.advantages = self._calculate_returns_and_advantages(self.v_est_memory, self.reward_memory, self.not_done_memory)
-    
+    # intrinsic rewards...
+    np_state_memory = np.asarray(self.state_memory)
+    target_embedding = self.target(np_state_memory)[1:]
+    predicted_embedding = self.predictor(np_state_memory)[1:]
+    intrinsic_reward = K.sum(K.square(target_embedding - predicted_embedding), axis=1)
+
+    intrinsic_reward_normalized = []
+    for i in intrinsic_reward:
+      self.ir_normalizer.partial_fit(K.reshape(i, shape=(-1, 1)))
+      intrinsic_reward_normalized.append(self.ir_normalizer.transform(K.reshape(i, shape=(-1, 1))))
+    intrinsic_reward_normalized = np.asarray(intrinsic_reward_normalized).flatten()
+    intrinsic_reward_normalized = np.append(intrinsic_reward_normalized, 0.0)
+
+    v_est_ext = np.asarray(self.v_est_memory)[:,0].flatten().tolist()
+    last_vest_ext = np.asarray(self.last_vest_buffer[0]).flatten().tolist()[0]
+    self.ext_returns, self.ext_advantages = self._calculate_returns_and_advantages(v_est_ext, self.reward_memory, self.not_done_memory, last_vest_ext)
+
+    v_est_int = np.asarray(self.v_est_memory)[:,1].flatten().tolist()
+    last_vest_int = np.asarray(self.last_vest_buffer[1]).flatten().tolist()[0]
+    self.int_returns, self.int_advantages = self._calculate_returns_and_advantages(v_est_int, intrinsic_reward_normalized, self.not_done_memory, last_vest_int)
+
     # train agent
-    self._train(self.state_memory, self.action_memory, self.action_dist_memory, self.returns, self.advantages, self.v_est_memory)
+    self._train(self.state_memory, self.action_memory, self.action_dist_memory, self.ext_returns, self.ext_advantages, self.int_returns, self.int_advantages, v_est_ext, v_est_int)
+
+    # train predictor
+    self.predictor.fit(x=np_state_memory[1:], y=target_embedding, batch_size=32, epochs=1, shuffle=True)
+
+    # log
     self._log_training()
     self._reset_memory()
 
@@ -280,10 +325,12 @@ class Agent(object):
       tf.summary.scalar('critic_losses/reg_loss', self.tb_critic_regloss.result(), step=self.step)
 
       # log returns and advantages
-      tf.summary.scalar('env_metrics/avg_returns_per_step', np.average(self.returns), step=self.step)
-      tf.summary.scalar('env_metrics/avg_advantages_per_step', np.average(self.advantages), step=self.step)
-      tf.summary.histogram('env_metrics/returns_per_step', self.returns, step=self.step)
-      tf.summary.histogram('env_metrics/advantages_per_step', self.advantages, step=self.step)
+      tf.summary.scalar('env_metrics/avg_ext_returns_per_step', np.average(self.ext_returns), step=self.step)
+      tf.summary.scalar('env_metrics/avg_ext_advantages_per_step', np.average(self.ext_advantages), step=self.step)
+      tf.summary.scalar('env_metrics/avg_int_returns_per_step', np.average(self.int_returns), step=self.step)
+      tf.summary.scalar('env_metrics/avg_int_advantages_per_step', np.average(self.int_advantages), step=self.step)
+      #tf.summary.histogram('env_metrics/returns_per_step', self.returns, step=self.step)
+      #tf.summary.histogram('env_metrics/advantages_per_step', self.advantages, step=self.step)
       
       # log optimizer statistisc
       tf.summary.scalar('optimizer/actor_lr', self.actor_optimizer._decayed_lr(tf.float32), step=self.step)
@@ -328,7 +375,7 @@ class Agent(object):
 
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      #self.env.render()
+      self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -366,5 +413,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reach_env_nonrandom_cfg
+  agt_cfg = _cfg.mountaincar_v0_cfg
   Agent(cfg=agt_cfg).learn()
