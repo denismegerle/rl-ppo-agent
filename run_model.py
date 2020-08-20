@@ -17,11 +17,11 @@ from _utils import NormalizeWrapper
 
 
 run_cfg = {
-    **_cfg.reach_env_nonrandom_cfg,
+    **_cfg.reach_env_random_cfg,
 
     'render' : False,
     'generate_gif' : False,
-    'load_prefix': 'logs/ppoagent/ReachEnv/20200813-043259/models/499999',
+    'load_prefix': 'logs/ppoagent/ReachEnv/20200816-221850/models/4999999',
 }
 
 """
@@ -77,7 +77,7 @@ logstd = np.load(f"{run_cfg['load_prefix']}/logstd.npy")
 
 # running a simulation of
 observation, done, frames = env.reset(), False, []
-steps, STEP_LIMIT = 0, 500
+steps, STEP_LIMIT = 0, 1000
 while not done:
     if run_cfg['render']:
         env.render()

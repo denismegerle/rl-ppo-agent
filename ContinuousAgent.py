@@ -366,5 +366,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reach_env_nonrandom_cfg
+  agt_cfg = _cfg.reach_env_random_cfg
   Agent(cfg=agt_cfg).learn()

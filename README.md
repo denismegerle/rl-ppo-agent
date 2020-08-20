@@ -83,9 +83,9 @@
 
 ### SimFramework Environments
 
-| ReachEnv-v0      | Episode Scores / Steps   |   ...    |  Episode Scores / Steps  |
+| ReachEnv-v0      | Episode Scores / Steps   | ReachEnvRandom-v0|  Episode Scores / Steps  |
 |------------------|--------------------------|------------------|--------------------------|
-|![][reachenvnorun]|  ![][reachenvnoscores]   | ... |  ...   |
+|![][reachenvnorun]|  ![][reachenvnoscores]   |![][reachenvyerun]|  ![][reachenvyescores]   |
 |                  |                          |                  |                          |
 
 ---
@@ -129,3 +129,5 @@
 
 [reachenvnorun]: logs/ppoagent/ReachEnv/20200813-043259/gym_animation.gif "ReachEnvNoRandom-Run"
 [reachenvnoscores]: logs/ppoagent/ReachEnv/20200813-043259/scores.png "ReachEnvNoRandom-Scores"
+[reachenvyerun]: logs/ppoagent/ReachEnv/20200816-221850/gym_animation.gif "ReachEnvRandom-Run"
+[reachenvyescores]: logs/ppoagent/ReachEnv/20200816-221850/scores.png "ReachEnvRandom-Scores"
