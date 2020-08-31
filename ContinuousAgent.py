@@ -19,8 +19,8 @@ from tqdm import tqdm
 
 # config and local imports
 import _cfg
+from framework.experience_buffer import ConsecutiveExperienceBuffer
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
-
 
 
 # -----------------------------------------------------------------------------------------------------------
@@ -56,8 +56,8 @@ class Agent(object):
     self.actor_optimizer = Adam(learning_rate=self.cfg['adam_actor_alpha'], epsilon=self.cfg['adam_actor_epsilon'])
     self.critic_optimizer = Adam(learning_rate=self.cfg['adam_critic_alpha'], epsilon=self.cfg['adam_critic_epsilon'])
 
-    ## MEMORY
-    self._reset_memory()
+    # generating a memory object for transitions (s, a, r, s', nd) 
+    self.experience_buffer = ConsecutiveExperienceBuffer(num_elem_components=5)
     
     ## TENSORBOARD metrics and writers
     self.start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -82,13 +82,6 @@ class Agent(object):
     
     with self.train_summary_writer.as_default():
       tf.summary.text(name='hyperparameters', data=tf.convert_to_tensor(cfg_as_list), step=0)
-    
-
-  def _reset_memory(self):
-    self.state_memory, self.not_done_memory = [], []
-    self.action_memory, self.action_dist_memory = [], []
-    self.reward_memory, self.v_est_memory = [], []
-    self.last_vest_buffer = 0.0
     
   def _build_network(self, network_model, input_dim, output_dim):
     model = network_model(input_dim, output_dim)
@@ -134,29 +127,24 @@ class Agent(object):
   def critic_evaluate(self, state):
     return self.critic(K.expand_dims(state, axis=0))[0]
 
-  def store_transition(self, state, action, action_dist, reward, v_est, not_done):
-    self.state_memory.append(state), self.not_done_memory.append(not_done)
-    self.action_memory.append(action), self.action_dist_memory.append(action_dist)
-    self.reward_memory.append(reward), self.v_est_memory.append(v_est)
+  def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones, last_vest, gamma, lmbda):
+    vests, rews, notdones = np.asarray(v_ests + [last_vest]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
 
-  def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones):
-    vests, rews, notdones = np.asarray(v_ests + [self.last_vest_buffer]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
-    
     # calculate actual returns (discounted rewards) based on observation
     def discounted_return_fn(accumulated_discounted_reward, reward_discount):
       reward, discount = reward_discount
       return accumulated_discounted_reward * discount + reward
     
-    discounts = self.cfg['gae_gamma'] * notdones
-    returns = npscanr(discounted_return_fn, self.last_vest_buffer, list(zip(rews, discounts)))
+    discounts = gamma * notdones
+    returns = npscanr(discounted_return_fn, last_vest, list(zip(rews, discounts)))
 
     # calculate actual advantages based on td residual (see gae paper, eq. 16)
     def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
       td, weighted_discount = weights_td_tuple
       return accumulated_td * weighted_discount + td 
-    
+
     deltas = rews + discounts * vests[1:] - vests[:-1]
-    advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(deltas, discounts * self.cfg['gae_lambda'])))
+    advantages = npscanr(weighted_cumulative_td_fn, 0, list(zip(deltas, discounts * lmbda)))
     
     return returns, advantages
   
@@ -175,7 +163,7 @@ class Agent(object):
     surrogate1 = K.square(values - returns)
     surrogate2 = K.square(clipped_vest - returns)
 
-    return K.mean(K.minimum(surrogate1, surrogate2))
+    return K.mean(K.maximum(surrogate1, surrogate2))
   
   def _entropy_loss(self, mu, log_std):
     return - K.mean(self._get_dist(mu, log_std).entropy())
@@ -190,7 +178,7 @@ class Agent(object):
     y_true_actions, y_pred_vest_old, y_true_returns = actions, v_ests, returns
     old_log_std = tf.Variable(self.log_std_stateless.value(), dtype=tf.float32)
 
-    sample_amt = len(self.action_memory)
+    sample_amt = len(states)
     sample_range, batches_amt = np.arange(sample_amt), sample_amt // self.cfg['batchsize']
     
     if self.cfg['permutate']:
@@ -259,13 +247,18 @@ class Agent(object):
         self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
   def train(self):
+    states, actions, rewards, next_states, not_dones = self.experience_buffer.sample()
+    action_dists = self.actor(np.asarray(states))
+    v_ests = self.critic(np.asarray(states)).numpy().tolist()
+    last_vest = self.critic_evaluate(next_states[-1]).numpy()
+
     # calculate returns and advantages
-    self.returns, self.advantages = self._calculate_returns_and_advantages(self.v_est_memory, self.reward_memory, self.not_done_memory)
-    
+    self.returns, self.advantages = self._calculate_returns_and_advantages(v_ests, rewards, not_dones, last_vest, self.cfg['gae_gamma'], self.cfg['gae_lambda'])
+
     # train agent
-    self._train(self.state_memory, self.action_memory, self.action_dist_memory, self.returns, self.advantages, self.v_est_memory)
+    self._train(states, actions, action_dists, self.returns, self.advantages, v_ests)
     self._log_training()
-    self._reset_memory()
+    self.experience_buffer.reset()
 
   def _log_training(self):
     with self.train_summary_writer.as_default():
@@ -336,13 +329,11 @@ class Agent(object):
 
       s_, r, done, _ = self.env.step(scaled_a)
       scores.append(self.env.unnormalize_reward(r))
-
-      v_est = self.critic_evaluate(s)
       
       if self.cfg['clip_eplength'] and len(observations) > self.cfg['clip_eplength'](self.step):
         done = True
-
-      self.store_transition(s, unscaled_a, a_dist, r, v_est, not done)
+      
+      self.experience_buffer.add_element([s, unscaled_a, r, s_, not done])
       s = s_
       
       # resetting environment if instance is terminated
@@ -358,7 +349,6 @@ class Agent(object):
         self.cfg['adam_actor_alpha'].update_rollout_step(self.step)
         self.cfg['adam_critic_alpha'].update_rollout_step(self.step)
         
-        self.last_vest_buffer = self.critic_evaluate(s_)
         self.train()
 # -----------------------------------------------------------------------------------------------------------
 
@@ -366,5 +356,5 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reach_env_nonrandom_cfg
+  agt_cfg = _cfg.reaching_dot_cfg
   Agent(cfg=agt_cfg).learn()

@@ -80,43 +80,7 @@ class NormalizeWrapper(VecNormalize):
   
 #   def render(self, mode='human'):
 #     return self.env.render(mode)
-    
-  
-class RunningMeanStd(object):
-  
-  def __init__(self, shape=()):
-    self.shape = shape
-    self.reset()
-  
-  def reset(self):
-    self.k = 0
-    self.M_k = np.zeros(self.shape)
-    self.S_k = np.zeros(self.shape)
-  
-  def update(self, x):
-    self.k += 1
-    delta_x_mean = x - self.M_k
-    self.M_k = self.M_k + delta_x_mean / self.k
-    self.S_k = self.S_k + delta_x_mean * (x - self.M_k)
-    
-  def __call__(self, x):
-    self.update(x)
-    
-    if self.k == 1:
-      return self.M_k, np.ones(self.shape)
-    else: return self.M_k, self.S_k / self.k
 
-
-  # def _normalize_observations(self, observations, not_dones):
-  #   def func(obs, not_done):
-  #     mean, variance = self.obs_rms(obs)
-  #     if not not_done: self.obs_rms.reset()
-  #     return mean, variance
-    
-  #   mean_vars = map(func, observations, not_dones)
-  #   normalized_observations = map(lambda obs, m_v: (obs - m_v[0]) / np.sqrt(m_v[1] + 1e-4), observations, mean_vars)
-    
-  #   return list(normalized_observations)
 
 class RolloutInverseTimeDecay(InverseTimeDecay):
   

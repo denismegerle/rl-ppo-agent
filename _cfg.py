@@ -10,7 +10,7 @@ from _nets import _mlp_actor_net_orth, _mlp_critic_net_orth
 from _utils import RolloutInverseTimeDecay, StepLambda
 
 
-IMPORT_SIM_FRAMEWORK = True
+IMPORT_SIM_FRAMEWORK = False
 if IMPORT_SIM_FRAMEWORK:
   sys.path.append('../SimulationFramework/simulation/src/')
   sys.path.append('../SimulationFramework/simulation/src/gym_envs/mujoco/')
