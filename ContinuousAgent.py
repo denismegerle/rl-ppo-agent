@@ -35,7 +35,7 @@ class Agent(object):
     
     print('normalization calibration')
     self.env.reset()
-    for _ in range(100000):
+    for _ in range(1000):
       _, _, done, _ = self.env.step(self.env.action_space.sample())
       if done: self.env.reset()
     print('normalization calibration finished')
@@ -135,7 +135,21 @@ class Agent(object):
     return self.critic(K.expand_dims(state, axis=0))[0]
 
   def _calculate_returns_and_advantages(self, v_ests, rewards, not_dones, last_vest, gamma, lmbda):
-    vests, rews, notdones = np.asarray(v_ests + [last_vest]).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
+    """TODO (!) -> last_vest = [x], v_ests = [[x], [y], ...]
+
+    Args:
+        v_ests ([type]): [description]
+        rewards ([type]): [description]
+        not_dones ([type]): [description]
+        last_vest ([type]): [description]
+        gamma ([type]): [description]
+        lmbda ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    vests = v_ests + [last_vest]
+    vests, rews, notdones = np.asarray(vests, dtype=np.float32).flatten(), np.asarray(rewards).flatten(), np.asarray(not_dones).flatten()
 
     # calculate actual returns (discounted rewards) based on observation
     def discounted_return_fn(accumulated_discounted_reward, reward_discount):
@@ -143,7 +157,7 @@ class Agent(object):
       return accumulated_discounted_reward * discount + reward
     
     discounts = gamma * notdones
-    returns = npscanr(discounted_return_fn, last_vest, list(zip(rews, discounts)))
+    returns = npscanr(discounted_return_fn, last_vest[0], list(zip(rews, discounts)))
 
     # calculate actual advantages based on td residual (see gae paper, eq. 16)
     def weighted_cumulative_td_fn(accumulated_td, weights_td_tuple):
@@ -257,8 +271,10 @@ class Agent(object):
     states, actions, rewards, next_states, not_dones = self.experience_buffer.sample()
     action_dists = self.actor(np.asarray(states))
 
-    v_ests_ext, v_ests_int = [vs.numpy().tolist() for vs in self.critic(np.asarray(states))]
-    last_vest_ext, last_vest_int = [vs.numpy() for vs in self.critic(K.expand_dims(next_states[-1], axis=0))]
+    v_ests = [vs.numpy().tolist() for vs in self.critic(np.asarray(states))]
+    last_vest = [vs.numpy().tolist() for vs in self.critic(K.expand_dims(next_states[-1], axis=0))[0]]
+
+    self.returns, self.advantages = self._calculate_returns_and_advantages(v_ests, rewards, not_dones, last_vest, self.cfg['gae_gamma'], self.cfg['gae_lambda'])
 
     # train agent
     self._train(states, actions, action_dists, self.returns, self.advantages, v_ests)
