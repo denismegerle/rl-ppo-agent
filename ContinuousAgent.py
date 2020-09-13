@@ -33,6 +33,13 @@ class Agent(object):
                                 clip_obs=self.cfg['clip_observations'], clip_reward=self.cfg['clip_rewards'],
                                 gamma=self.cfg['gamma_env_normalization'], epsilon=self.cfg['num_stab_envnorm'])
     
+    print('normalization calibration')
+    self.env.reset()
+    for _ in range(100000):
+      _, _, done, _ = self.env.step(self.env.action_space.sample())
+      if done: self.env.reset()
+    print('normalization calibration finished')
+
     self.discrete = True if isinstance(self.env.action_space, gym.spaces.Discrete) else False   # only allowing Discrete and Box2D
 
     # get dimensions of input / output dimension
@@ -249,11 +256,9 @@ class Agent(object):
   def train(self):
     states, actions, rewards, next_states, not_dones = self.experience_buffer.sample()
     action_dists = self.actor(np.asarray(states))
-    v_ests = self.critic(np.asarray(states)).numpy().tolist()
-    last_vest = self.critic_evaluate(next_states[-1]).numpy()
 
-    # calculate returns and advantages
-    self.returns, self.advantages = self._calculate_returns_and_advantages(v_ests, rewards, not_dones, last_vest, self.cfg['gae_gamma'], self.cfg['gae_lambda'])
+    v_ests_ext, v_ests_int = [vs.numpy().tolist() for vs in self.critic(np.asarray(states))]
+    last_vest_ext, last_vest_int = [vs.numpy() for vs in self.critic(K.expand_dims(next_states[-1], axis=0))]
 
     # train agent
     self._train(states, actions, action_dists, self.returns, self.advantages, v_ests)

@@ -9,13 +9,15 @@ import cv2
 class ReachingDotEnv(gym.Env):
   metadata = { 'render.modes' : ['rgb_array'] }
   
-  def __init__(self, seed=None):
+  def __init__(self, seed=None, sparse_rewards=True, max_steps=100):
     super(ReachingDotEnv, self).__init__()
     
+    self.sparse_rewards = sparse_rewards
+
     # ENV PARAMETERS
     self.dot_size = [1, 1]
     self.random_start = True
-    self.max_steps = 100
+    self.max_steps = max_steps
     self.env_size = 32                    # 32
     self.min_action, self.max_action = -1.0, 1.0
     self.reached_thresh = 2.0
@@ -82,24 +84,25 @@ class ReachingDotEnv(gym.Env):
       prev_dist = self._eucl_dist(np.asarray(prev_pos_agent), np.asarray(prev_pos_goal))
       cur_dist = self._eucl_dist(np.asarray(self.pos_agent), np.asarray(self.pos_goal))
       
-      if cur_dist < prev_dist:
-        reward = 1
-      elif cur_dist == prev_dist:
-        reward = 0
-      else:
-        reward = -1
-      
-      #reward = - cur_dist / (self.env_size)
       reward = - cur_dist / self.env_size
 
-      if cur_dist <= self.reached_thresh:
-        reward = 100
-        done = True
-        print("Success")
+      if not self.sparse_rewards:
+        if cur_dist <= self.reached_thresh:
+          reward = 100
+          done = True
+          print("Success")
+        else:
+          done = False
       else:
-        done = False
+        if cur_dist <= self.reached_thresh:
+          reward = 1000
+          done = True
+          print("Success")
+        else:
+          reward = -1
+          done = False
     else:
-      reward = -100
+      reward = -1000
       done = True
     
     self.steps += 1

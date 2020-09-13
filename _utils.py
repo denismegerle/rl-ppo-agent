@@ -89,7 +89,7 @@ class RolloutInverseTimeDecay(InverseTimeDecay):
     self.rollout_step = 0
   
   def update_rollout_step(self, new_step):
-    assert new_step > 0 and new_step > self.rollout_step, 'invalid new rollout step defined'
+    assert new_step > 0, 'invalid new rollout step defined'
     self.rollout_step = new_step
     
   def __call__(self, step):
@@ -105,7 +105,7 @@ class StepLambda(LearningRateSchedule):
     self.rollout_step = 0
   
   def update_rollout_step(self, new_step):
-    assert new_step > 0 and new_step > self.rollout_step, 'invalid new rollout step defined'
+    assert new_step > 0, 'invalid new rollout step defined'
     self.rollout_step = new_step
     
   def __call__(self, step):
