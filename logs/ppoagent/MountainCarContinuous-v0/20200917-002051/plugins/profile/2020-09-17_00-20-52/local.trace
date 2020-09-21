@@ -1,0 +1,47 @@
+
+y1u
+	/host:CPU1 Ÿ
+
+tf_Compute Ÿœ¦
+
+tf_Computeœ¦ø9ø9¬¬
+
+tf_Compute¬¬ì-
+
+tf_Computeì-")1ø9TFE_Py_FastPathExecute_CHÀ‚‰WPàêø"#1ø9EagerExecute: FillH –ÔbP€‡§"(1ø9EagerLocalExecute: FillHàîòcPà†ö"-1ø9ValidateInputTypeAndPlacementHÀ’ªfPÀîm"#1ø9EagerKernelExecuteHÀï…hPà¬"1ø9	Fill:FillHàÃ˜jPÀ¨¥"&1ø9TFE_DeleteTensorHandleH€¹üwP ÷6"'1ø9TFE_DeleteTensorHandleHÀ›ÙPàÏÕ":1ø9&EagerExecute: __inference_tf_trace_453H ã£±P Ç‡°t"?1ø9+EagerLocalExecute: __inference_tf_trace_453H€‹×¤±P ç¤t"21ø9EagerCopyToDeviceAndAddCacheKeyH€³š¦±PàøÜ"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€×‚ª±P€ê0"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHÀÎê«±PÀš"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€ˆÀ¬±PÀš"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHàÎ›­±PÀš"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH ˆñ­±PÀš"J1ø98TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€ÏÌ®±Pà§"01ø9ValidateInputTypeAndPlacementH€èï˜P€±½"&1ø9EagerKernelExecuteH ííó˜P€ÙªÏ"|1ø9FunctionRunHÀæ¬ÿ˜P€ÊšZ
+	step_name0Z
+id-2037840934341395962Z
+group_id0Z 
+name__inference_tf_trace_453")1ø9TFE_DeleteTensorHandleH §Âí¦PàŞ²")1ø9TFE_DeleteTensorHandleH€”ı¦Pà£·")1ø9TFE_DeleteTensorHandleHà€¤å¹P µÉ"+1ø9TFE_Py_FastPathExecute_CH€¤ã•ºPà²É$"(1ø9TFE_DeleteTensorHandleH Í¢ºP Â"(1ø9TFE_DeleteTensorHandleH€ÊÓ¤ºPÀš"+1ø9EagerExecute: LogicalAndH ´µ¦ºP ‡Ø"01ø9EagerLocalExecute: LogicalAndH ½¯§ºPÀÖË"/1ø9ValidateInputTypeAndPlacementH ¹Ô©ºP€ŸI"%1ø9EagerKernelExecuteHÀ¹…«ºP »¬
+"(1ø9LogicalAnd:LogicalAndHàÂ°­ºP€—“"+1ø9TFE_Py_FastPathExecute_CHààÔñºPàÎÆ")1ø9EagerExecute: IdentityH€¥ûüºP€¿Ö".1ø9EagerLocalExecute: IdentityH œ²ıºPÀº™"/1ø9ValidateInputTypeAndPlacementH İşºP Â"%1ø9EagerKernelExecuteHàÈ²ÿºP ±î"#1ø9Identity:IdentityH ¡Ñ€»PÀîm"+1ø9TFE_Py_FastPathExecute_CHÀ–µ»P æ†"(1ø9TFE_DeleteTensorHandleHÀâ´õ»P€‰z"(1ø9TFE_DeleteTensorHandleH ²¿¼P€Ôa"-1ø9EagerExecute: WriteSummaryHà’É¤¼P€öö"21ø9EagerLocalExecute: WriteSummaryHà›Ã¥¼PÀÒğ"/1ø9ValidateInputTypeAndPlacementH ©ú¦¼PàÜ*"%1ø9EagerKernelExecuteH€ğÕ§¼PÀìš",1ø9WriteSummary:WriteSummaryHà©Ü©¼PÀÑ¬")1ø9TFE_DeleteTensorHandleH€ïÆº¼P µÉ"(1ø9TFE_DeleteTensorHandleH ÃÙ¼¼P ¬O"(1ø9TFE_DeleteTensorHandleHà±Ç½¼Pà§"(1ø9TFE_DeleteTensorHandleHà”Ò¼P€‰z")1ø9TFE_DeleteTensorHandleH€øõÓ¼Pàå¤")1ø9TFE_DeleteTensorHandleHàŒ…å¼P€’ô"(1ø9TFE_DeleteTensorHandleHàòÚç¼Pà§"c1ì-ExecutorState::ProcessHÀùÏP ŒáCZ
+id-2037840934341395962Z
+iter_num0Z
+group_id0"W1ì-5model_1/dense_5/BiasAdd/ReadVariableOp:ReadVariableOpHàíïƒŸP ’¥Z
+group_id0"c1ì-ExecutorState::ProcessHà…•ŸP ½Ó^Z
+id-2037840934341395962Z
+iter_num0Z
+group_id0"W1ì-5model_1/dense_3/BiasAdd/ReadVariableOp:ReadVariableOpHàÍ—–ŸP ‰«Z
+group_id0"F1ì-$model_1/dense_3/BiasAdd:_FusedMatMulH€ÏŒŸP  -Z
+group_id0";1ì-model_1/dense_3/Tanh:TanhH€ÜËÌŸP€Ù€Z
+group_id0"F1ì-$model_1/dense_4/BiasAdd:_FusedMatMulH€¾ÆÑŸPàÙ“Z
+group_id0":1ì-model_1/dense_4/Tanh:TanhH€ììÛŸP€‰zZ
+group_id0"F1ì-$model_1/dense_5/BiasAdd:_FusedMatMulHÀ·¶ŞŸP Ç½Z
+group_id0"C1ì-ExecutorDoneCallbackHÀ‹Í÷ŸPà¤° Z
+id-2037840934341395962"d1œ¦ExecutorState::ProcessH ë…öPÀŞ SZ
+id-2037840934341395962Z
+iter_num0Z
+group_id0"W1œ¦4model_1/dense_4/MatMul/ReadVariableOp:ReadVariableOpHà©úùPàà¤GZ
+group_id0"d1¬¬ExecutorState::ProcessHÀî‚ˆŸPÀœ”Z
+id-2037840934341395962Z
+iter_num0Z
+group_id0"X1¬¬5model_1/dense_4/BiasAdd/ReadVariableOp:ReadVariableOpHàµÀ‹ŸPà¨ÖZ
+group_id0"d1¬¬ExecutorState::ProcessHÀ·—•ŸPà–âZ
+id-2037840934341395962Z
+iter_num0Z
+group_id0"W1¬¬4model_1/dense_3/MatMul/ReadVariableOp:ReadVariableOpHÀÀ‘–ŸPàîZ
+group_id0"d1 ŸExecutorState::ProcessHà§ÜŸŸP †”
+Z
+id-2037840934341395962Z
+iter_num0Z
+group_id0"W1 Ÿ4model_1/dense_5/MatMul/ReadVariableOp:ReadVariableOpHà²¢ŸP ÊZ
+group_id0

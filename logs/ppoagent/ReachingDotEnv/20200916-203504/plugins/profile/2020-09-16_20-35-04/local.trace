@@ -1,0 +1,50 @@
+
+1‰
+	/host:CPU1ä¡
+
+tf_Computeä¡ôY
+
+tf_ComputeôY°¨
+
+tf_Compute°¨¨a
+
+tf_Compute¨a¸{¸{ø
+
+tf_Computeø"*1¸{TFE_Py_FastPathExecute_CHÀ¿½¨P ò."$1¸{EagerExecute: FillHàúé²Pàºÿ")1¸{EagerLocalExecute: FillHÀöİ³P —ù".1¸{ValidateInputTypeAndPlacementH ûËµPà‘C"$1¸{EagerKernelExecuteH€í¶ÈP çÊ	"1¸{	Fill:FillHàîÊP€­â"'1¸{TFE_DeleteTensorHandleHà²ƒÜP€ê0"(1¸{TFE_DeleteTensorHandleHÀéòåPÀ÷ç";1¸{&EagerExecute: __inference_tf_trace_354H€ƒ»îœPà˜İ‡"@1¸{+EagerLocalExecute: __inference_tf_trace_354H€«şïœP€ÉÇÛ‡"21¸{EagerCopyToDeviceAndAddCacheKeyHÀ¢æñœP€É”"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€êÔöœP ág"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHà¬ÕùœP€µ"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyHàêçúœP€µ"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH îûœPàÜ*"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€©«ıœPÀÏ$"J1¸{8TensorHandle::GetResourceHandleDtypesAndShapes WaitReadyH€ç½şœP€µ"/1¸{ValidateInputTypeAndPlacementH †ÅŞ•Pàûs"&1¸{EagerKernelExecuteHà²Åà•P€à˜ê"|1¸{FunctionRunH€¦¡ã•P ²åÎZ
+	step_name0Z
+id-6806024322745052205Z
+group_id0Z 
+name__inference_tf_trace_354")1¸{TFE_DeleteTensorHandleHÀ™‰ğ¤Pà„î"(1¸{TFE_DeleteTensorHandleHàŒåò¤P ág"(1¸{TFE_DeleteTensorHandleH Òœ·­P€‰z"+1¸{TFE_Py_FastPathExecute_CHÀÛüÑ­PàäÿD"(1¸{TFE_DeleteTensorHandleHà¤Âà­P€µ"(1¸{TFE_DeleteTensorHandleH€¥óá­P "+1¸{EagerExecute: LogicalAndHà çâ­Pàˆ³0"01¸{EagerLocalExecute: LogicalAndH€Í¶ã­P ‘Ë."/1¸{ValidateInputTypeAndPlacementH ‹¯ş­PÀ„="%1¸{EagerKernelExecuteH€¼»ÿ­P€öö"(1¸{LogicalAnd:LogicalAndHÀÉò€®P ¡‚"+1¸{TFE_Py_FastPathExecute_CHÀ¡ÎÈ®P ¢û*")1¸{EagerExecute: IdentityH€µèÒ®Pà¨‹".1¸{EagerLocalExecute: IdentityH ¬ŸÓ®P€—È"/1¸{ValidateInputTypeAndPlacementHÀÂÔì®P€µ"%1¸{EagerKernelExecuteHàî£í®P€…Ÿ"#1¸{Identity:IdentityH€…¤î®P ¬O"+1¸{TFE_Py_FastPathExecute_CH€öûü®PÀŞ
+"(1¸{TFE_DeleteTensorHandleHàÛôß¯PÀîm"(1¸{TFE_DeleteTensorHandleH Ü‹û¯P ÷6"(1¸{TFE_DeleteTensorHandleH şÕ¤°PÀÏ$".1¸{EagerExecute: WriteSummaryH€ô›µ°P€îÛ„"31¸{EagerLocalExecute: WriteSummaryH€“åµ°P€šúƒ"/1¸{ValidateInputTypeAndPlacementH€‰ÜÇ°PÀÏ$"&1¸{EagerKernelExecuteHÀÂ±È°Pà‘Şî"-1¸{WriteSummary:WriteSummaryHÀ€ÄÉ°PÀú™è")1¸{TFE_DeleteTensorHandleHàË¬Ñ³PÀü†")1¸{TFE_DeleteTensorHandleHÀÑŞØ³P€óª"(1¸{TFE_DeleteTensorHandleHÀù¡Ú³P€µ"(1¸{TFE_DeleteTensorHandleHÀ¿‰ ´P€ê0")1¸{TFE_DeleteTensorHandleHÀˆ­´Pà„î")1¸{TFE_DeleteTensorHandleH€’ú°´PÀ÷ç")1¸{TFE_DeleteTensorHandleH€³€Õ´P€’ô"(1¸{TFE_DeleteTensorHandleH ¼«×´PÀš"e1°¨ExecutorState::ProcessH€öæP —‹“Z
+id-6806024322745052205Z
+iter_num0Z
+group_id0"U1°¨2model/dense_1/MatMul/ReadVariableOp:ReadVariableOpH€Ó…ğ P€…ŸZ
+group_id0"c1ôYExecutorState::ProcessHà®·Ò P ‹³Z
+id-6806024322745052205Z
+iter_num0Z
+group_id0"R1ôY0model/dense/MatMul/ReadVariableOp:ReadVariableOpHà‹“Ô PÀÇîZ
+group_id0"c1øExecutorState::ProcessH€‰­İ Pà¶ï	Z
+id-6806024322745052205Z
+iter_num0Z
+group_id0"U1ø3model/dense_1/BiasAdd/ReadVariableOp:ReadVariableOpHà›ß P ¾ÃZ
+group_id0"c1øExecutorState::ProcessHÀğ¨è P ‰«Z
+id-6806024322745052205Z
+iter_num0Z
+group_id0"U1ø3model/dense_2/BiasAdd/ReadVariableOp:ReadVariableOpHÀÄŠé Pàå¤Z
+group_id0"d1ä¡ExecutorState::ProcessHÀØÑİ PàÕ¸
+Z
+id-6806024322745052205Z
+iter_num0Z
+group_id0"U1ä¡2model/dense_2/MatMul/ReadVariableOp:ReadVariableOpHÀ€•ß PÀËÉZ
+group_id0"d1¨aExecutorState::ProcessHàƒ’ñ P ÎµZ
+id-6806024322745052205Z
+iter_num0Z
+group_id0"S1¨a1model/dense/BiasAdd/ReadVariableOp:ReadVariableOpH€ËÏô P€ÇŒZ
+group_id0"C1¨a model/dense/BiasAdd:_FusedMatMulH â“û P ¶Ô“Z
+group_id0"71¨amodel/dense/Tanh:TanhHà·â£P€ÄZ
+group_id0"D1¨a"model/dense_1/BiasAdd:_FusedMatMulHà×ï–£PàÂ€Z
+group_id0"81¨amodel/dense_1/Tanh:TanhH€ÔÅš£P€ê0Z
+group_id0"D1¨a"model/dense_2/BiasAdd:_FusedMatMulHàš¡›£P€±½Z
+group_id0"91¨amodel/dense_2/Tanh:TanhHàµ£Pà¹†Z
+group_id0"C1¨aExecutorDoneCallbackH õÇ§£P€œ²Z
+id-6806024322745052205
