@@ -15,6 +15,7 @@ if IMPORT_SIM_FRAMEWORK:
   sys.path.append('../SimulationFramework/simulation/src/')
   sys.path.append('../SimulationFramework/simulation/src/gym_envs/mujoco/')
   from gym_envs.mujoco.reach_env import ReachEnv
+  from envs.throw_env import ThrowEnv, RandomThrowEnv, FourTrayThrowEnv, FourTrayReachThrowEnv, TossEnv
 
 
 
@@ -96,8 +97,8 @@ mujoco_base_cfg = {
   # ---- TRAINING ----
   'epochs' : 10,
   'batchsize' : 32,
-  'total_steps' : 1000000,
-  'rollout' : 2048,
+  'total_steps' : 2000000,
+  'rollout' : 2048 * 8, # about n_steps * n_env
 }
 
 atari_base_cfg = {
@@ -216,13 +217,28 @@ reach_env_nonrandom_cfg = {
   'rollout' : 2048,
 }
 
-
-# ------------------------------------------------ TODO ENVIRONMENT EXAMPLES ------------------------------------------------
-half_cheetah_v2_cfg = {
-  **mujoco_base_cfg,
+reach_env_random_cfg = {
+  **base_cfg,
   
-  'environment' : (lambda : gym.make('HalfCheetah-v2')),
+  'environment' : (lambda : ReachEnv(max_steps=75, render=True, randomize_objects=True)),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 32,
+  'total_steps' : 5000000,
+  'rollout' : 2048,
 }
+# ------------------------------------------------ TODO ENVIRONMENT EXAMPLES ------------------------------------------------
 
 mountaincar_v0_cfg = {
   **base_cfg,
@@ -245,24 +261,183 @@ mountaincar_v0_cfg = {
   'gae_lambda' : 0.98,               # smoothing for advantage, reducing variance in training
 }
 
-reach_env_random_cfg = {
+
+
+
+
+throw_env_cfg = {
   **base_cfg,
   
-  'environment' : (lambda : ReachEnv(max_steps=75, render=True, randomize_objects=True)),
+  'environment' : (lambda : ThrowEnv(max_steps=50, render=True, randomize_objects=False, trajectory_length=35, target_min_dist=0.15)),
   
   # ---- NET/TF CONFIG ----
   'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
   'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
 
+  'actor_model' : _mlp_actor_net_orth([64, 64]),
+  'critic_model' : _mlp_critic_net_orth([64, 64]),
+  
   # ---- LOSS CALCULATION ----
   'entropy_factor' : (lambda step: 1e-3),
   
   'actor_regloss_factor' : 0e-4,
   'critic_regloss_factor' : 0e-4,
   
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+  
+  'gae_gamma' : 0.99,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training  
+  'gamma_env_normalization' : 0.99,
+  
+  
   # ---- TRAINING ----
   'epochs' : 10,
-  'batchsize' : 32,
+  'batchsize' : 64,
+  'total_steps' : 3000000,
+  'rollout' : 2048,
+}
+
+random_throw_env_cfg = {
+  **base_cfg,
+  
+  'environment' : (lambda : RandomThrowEnv(max_steps=50, render=True, randomize_objects=False, trajectory_length=35, target_min_dist=0.15)),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 100000, 1.0, staircase=False),
+
+  'actor_model' : _mlp_actor_net_orth([128, 128]),
+  'critic_model' : _mlp_critic_net_orth([128, 128]),
+  
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+  
+  'gae_gamma' : 0.999,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training  
+  'gamma_env_normalization' : 0.99,
+  
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 64,
   'total_steps' : 5000000,
+  'rollout' : 2048,
+}
+
+four_tray_throw_env_cfg = {
+  **base_cfg,
+  
+  'environment' : (lambda : FourTrayThrowEnv(max_steps=60, render=True, randomize_objects=False, trajectory_length=35, target_min_dist=0.1, trays_center=[0.4, 0.0], trays_stride=[0.15, 0.15])),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),
+
+  'actor_model' : _mlp_actor_net_orth([128, 128]),
+  'critic_model' : _mlp_critic_net_orth([128, 128]),
+  
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+  
+  'gae_gamma' : 0.999,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training  
+  'gamma_env_normalization' : 0.99,
+  
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 64,
+  'total_steps' : 1000000,
+  'rollout' : 2048,
+}
+
+
+four_tray_reach_throw_env_cfg = {
+  **base_cfg,
+  
+  'environment' : (lambda : FourTrayReachThrowEnv(max_steps=130, render=False, randomize_objects=False, trajectory_length=35, target_min_dist=0.1, table_position=[0.4, 0.2], trays_center=[0.4, 0.0], trays_stride=[0.15, 0.15])),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 2e6)),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 2e6)),
+
+  'actor_model' : _mlp_actor_net_orth([192, 192]),
+  'critic_model' : _mlp_critic_net_orth([192, 192]),
+  
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+  
+  'gae_gamma' : 0.999,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training  
+  'gamma_env_normalization' : 0.99,
+  
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 64,
+  'total_steps' : 1000000,
+  'rollout' : 2048,
+}
+
+
+toss_env_cfg = {
+  **base_cfg,
+  
+  'environment' : (lambda : TossEnv(max_steps=100, render=True, randomize_objects=False, trajectory_length=35, target_min_dist=0.1, tray_position=[1.5, 0.0, 0.0])),
+  
+  # ---- NET/TF CONFIG ----
+  'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 2e6)),
+  'adam_critic_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 2e6)),
+
+  'actor_model' : _mlp_actor_net_orth([192, 192]),
+  'critic_model' : _mlp_critic_net_orth([192, 192]),
+  
+  # ---- LOSS CALCULATION ----
+  'entropy_factor' : (lambda step: 1e-3),
+  
+  'actor_regloss_factor' : 0e-4,
+  'critic_regloss_factor' : 0e-4,
+  
+  'normalize_advantages' : True,     # minibatch advantage normalization
+  'normalize_observations' : True,   # running mean + variance normalization
+  'normalize_rewards' : True,        # running variance normalization
+  'scale_actions' : True,
+  
+  'gae_gamma' : 0.999,               # reward discount factor
+  'gae_lambda' : 0.95,              # smoothing for advantage, reducing variance in training  
+  'gamma_env_normalization' : 0.99,
+  
+  
+  # ---- TRAINING ----
+  'epochs' : 10,
+  'batchsize' : 64,
+  'total_steps' : 1000000,
   'rollout' : 2048,
 }

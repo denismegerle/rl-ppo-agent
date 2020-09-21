@@ -6,7 +6,7 @@ import os
 import pprint
 import random
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
 import numpy as np
 import pickle as pkl
@@ -20,7 +20,6 @@ from tqdm import tqdm
 # config and local imports
 import _cfg
 from _utils import foldl, npscanr, NormalizeWrapper, tb_log_model_graph
-
 
 
 # -----------------------------------------------------------------------------------------------------------
@@ -175,7 +174,7 @@ class Agent(object):
     surrogate1 = K.square(values - returns)
     surrogate2 = K.square(clipped_vest - returns)
 
-    return K.mean(K.minimum(surrogate1, surrogate2))
+    return K.mean(K.maximum(surrogate1, surrogate2))
   
   def _entropy_loss(self, mu, log_std):
     return - K.mean(self._get_dist(mu, log_std).entropy())
@@ -237,6 +236,8 @@ class Agent(object):
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
           critic_loss = value_loss + reg_loss_critic
           
+          loss = actor_loss + critic_loss
+          
           # tensorboard logging
           self.tb_actor_loss(actor_loss)
           self.tb_ppo_loss(ppo_clip_loss)
@@ -247,16 +248,18 @@ class Agent(object):
           self.tb_value_loss(value_loss)
           self.tb_critic_regloss(reg_loss_critic)
         
-        if not self.discrete:
-          gradient = tape.gradient(actor_loss, [self.log_std_stateless])
-          self.actor_optimizer.apply_gradients(zip(gradient, [self.log_std_stateless]))
-
-        gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
-        gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=self.cfg['clip_policy_gradient_norm'])
-        self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
+        trainable_variables_policy = self.actor.trainable_variables
+        trainable_variables_critic = self.critic.trainable_variables
         
-        gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
-        self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
+        if not self.discrete:
+          trainable_variables_policy += [self.log_std_stateless]
+          
+        gradient = tape.gradient(loss, trainable_variables_policy)
+        gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=self.cfg['clip_policy_gradient_norm'])
+        self.actor_optimizer.apply_gradients(zip(gradient, trainable_variables_policy))
+        
+        gradient = tape.gradient(critic_loss, trainable_variables_critic)
+        self.critic_optimizer.apply_gradients(zip(gradient, trainable_variables_critic))
   
   def train(self):
     # calculate returns and advantages
@@ -325,7 +328,7 @@ class Agent(object):
   def learn(self):
     s, episode, done = self.env.reset(), 0, False
     observations, actions, scores = [], [], []
-
+    
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
       #self.env.render()
@@ -334,7 +337,7 @@ class Agent(object):
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
       actions.append(unscaled_a)
 
-      s_, r, done, _ = self.env.step(scaled_a)
+      s_, r, done, _ = self.env.step(scaled_a) 
       scores.append(self.env.unnormalize_reward(r))
 
       v_est = self.critic_evaluate(s)
@@ -366,5 +369,7 @@ if __name__ == "__main__":
   tf.random.set_seed(1)
   np.random.seed(1)
   
-  agt_cfg = _cfg.reach_env_random_cfg
-  Agent(cfg=agt_cfg).learn()
+  gpu = '/device:GPU:0'
+  with tf.device(gpu):
+    agt_cfg = _cfg.four_tray_throw_env_cfg
+    Agent(cfg=agt_cfg).learn()
