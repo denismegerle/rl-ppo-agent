@@ -73,14 +73,6 @@
 
 ---
 
-### Mujoco Environments
-
----
-
-### Atari Environments
-
----
-
 ### SimFramework Environments
 
 | ReachEnv-v0      | Episode Scores / Steps   | ReachEnvRandom-v0|  Episode Scores / Steps  |
