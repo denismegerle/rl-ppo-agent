@@ -11,11 +11,11 @@ from _utils import RolloutInverseTimeDecay, StepLambda
 
 
 IMPORT_SIM_FRAMEWORK = False
+
 if IMPORT_SIM_FRAMEWORK:
   sys.path.append('../SimulationFramework/simulation/src/')
   sys.path.append('../SimulationFramework/simulation/src/gym_envs/mujoco/')
   from gym_envs.mujoco.reach_env import ReachEnv
-
 
 
 
@@ -139,16 +139,53 @@ cont_cartpoal_cfg = {
   'rollout' : 2048,
 }
 
-reaching_dot_cfg = {
+reaching_dot_dense_cfg = {
   **base_cfg,
 
-  'environment' : (lambda : ReachingDotEnv()),
+  'environment' : (lambda : ReachingDotEnv(reward_type='dense')),
 
   'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
   'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
   
   # ---- TRAINING ----
   'total_steps' : 200000,
+}
+
+reaching_dot_semi_sparse_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : ReachingDotEnv(reward_type='semi-sparse')),
+
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  
+  # ---- TRAINING ----
+  'total_steps' : 200000,
+  'normalize_rewards' : False,
+}
+
+reaching_dot_sparse_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : ReachingDotEnv(reward_type='sparse')),
+
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  
+  # ---- TRAINING ----
+  'total_steps' : 200000
+}
+
+reaching_dot_sparse_64_cfg = {
+  **base_cfg,
+
+  'environment' : (lambda : ReachingDotEnv(reward_type='sparse', env_size=64)),
+
+  'adam_actor_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  'adam_critic_alpha' : RolloutInverseTimeDecay(3e-4, 50000, 1.0, staircase=False),
+  
+  # ---- TRAINING ----
+  'total_steps' : 200000
 }
 
 cartpole_v1_cfg = {
@@ -216,18 +253,10 @@ reach_env_nonrandom_cfg = {
   'rollout' : 2048,
 }
 
-
-# ------------------------------------------------ TODO ENVIRONMENT EXAMPLES ------------------------------------------------
-half_cheetah_v2_cfg = {
-  **mujoco_base_cfg,
-  
-  'environment' : (lambda : gym.make('HalfCheetah-v2')),
-}
-
-mountaincar_v0_cfg = {
+mountaincar_continuous_v0_cfg = {
   **base_cfg,
   
-  'environment' : (lambda : gym.make('MountainCar-v0')),
+  'environment' : (lambda : gym.make('MountainCarContinuous-v0')),
 
   # ---- LOSS CALCULATION ----
   'entropy_factor' : (lambda step: 0e-3),
@@ -236,11 +265,13 @@ mountaincar_v0_cfg = {
   'critic_regloss_factor' : 0e-4,
   
   # ---- TRAINING ----
-  'epochs' : 4,
+  'epochs' : 6,
   'batchsize' : 16,
-  'total_steps' : 1000000,
-  'rollout' : 16,
+  'total_steps' : 500000,
+  'rollout' : 256,
 
-  'gae_gamma' : 0.99,               # reward discount factor
-  'gae_lambda' : 0.98,               # smoothing for advantage, reducing variance in training
+  'gae_gamma' : 0.999,               # reward discount factor
+  'gae_lambda' : 0.95,               # smoothing for advantage, reducing variance in training
 }
+# ------------------------------------------------ TODO ENVIRONMENT EXAMPLES ------------------------------------------------
+
