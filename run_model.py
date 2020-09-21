@@ -14,15 +14,38 @@ import _cfg
 from _utils import NormalizeWrapper
 
 
+# run_cfg = {
+#     **_cfg.reach_env_random_cfg,
 
+#     'render' : False,
+#     'generate_gif' : False,
+#     'load_prefix': 'logs/ppoagent/ReachEnv/20200816-221850/models/4999999',
+# }
+
+# run_cfg = {
+#     **_cfg.throw_env_cfg,
+
+#     'render' : False,
+#     'generate_gif' : False,
+#     'load_prefix': 'logs/ppoagent/ThrowEnv/20200908-033649/models/2999999',
+# }
+
+# run_cfg = {
+#     **_cfg.random_throw_env_cfg,
+
+#     'render' : False,
+#     'generate_gif' : False,
+#     'load_prefix': 'logs/ppoagent/RandomThrowEnv/20200910-161238/models/3460000',
+# }
 
 run_cfg = {
-    **_cfg.reach_env_random_cfg,
+    **_cfg.four_tray_throw_env_cfg,
 
     'render' : False,
     'generate_gif' : False,
-    'load_prefix': 'logs/ppoagent/ReachEnv/20200816-221850/models/4999999',
+    'load_prefix': 'logs/ppoagent/FourTrayThrowEnv/20200915-115119/models/999999',
 }
+
 
 """
 Frames to GIF part is from
@@ -67,36 +90,38 @@ def generate_action(env, model, log_std, state, discrete, scale):
 
     return scaled_action
 
-# reloading environment and status
-env = NormalizeWrapper.load(f"{run_cfg['load_prefix']}/env.pkl", run_cfg['environment'])
-discrete = True if isinstance(env.action_space, gym.spaces.Discrete) else False
+gpu = '/device:GPU:1'
+with tf.device(gpu):
+    # reloading environment and status
+    env = NormalizeWrapper.load(f"{run_cfg['load_prefix']}/env.pkl", run_cfg['environment'])
+    discrete = True if isinstance(env.action_space, gym.spaces.Discrete) else False
 
-# reloading policy model
-model = tf.keras.models.load_model(f"{run_cfg['load_prefix']}/actor.h5", compile=False)
-logstd = np.load(f"{run_cfg['load_prefix']}/logstd.npy")
+    # reloading policy model
+    model = tf.keras.models.load_model(f"{run_cfg['load_prefix']}/actor.h5", compile=False)
+    logstd = np.load(f"{run_cfg['load_prefix']}/logstd.npy")
 
-# running a simulation of
-observation, done, frames = env.reset(), False, []
-steps, STEP_LIMIT = 0, 1000
-while not done:
-    if run_cfg['render']:
-        env.render()
+    # running a simulation of
+    observation, done, frames = env.reset(), False, []
+    steps, STEP_LIMIT = 0, 1000
+    while not done:
+        if run_cfg['render']:
+            env.render()
     
+        if run_cfg['generate_gif']:
+            frames.append(env.render(mode="rgb_array"))
+
+        action = generate_action(env, model, logstd, observation, discrete, run_cfg['scale_actions'])
+        observation, _, done, _ = env.step(action)
+
+        if done and steps < STEP_LIMIT:
+            observation, done = env.reset(), False
+    
+        if steps >= STEP_LIMIT:
+            break
+    
+        steps += 1
+        print(steps)
+    env.close()
+
     if run_cfg['generate_gif']:
-        frames.append(env.render(mode="rgb_array"))
-
-    action = generate_action(env, model, logstd, observation, discrete, run_cfg['scale_actions'])
-    observation, _, done, _ = env.step(action)
-
-    if done and steps < STEP_LIMIT:
-        observation, done = env.reset(), False
-    
-    if steps >= STEP_LIMIT:
-        break
-    
-    steps += 1
-    print(steps)
-env.close()
-
-if run_cfg['generate_gif']:
-    save_frames_as_gif(frames)
+        save_frames_as_gif(frames)
