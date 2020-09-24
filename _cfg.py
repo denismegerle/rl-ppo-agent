@@ -338,7 +338,7 @@ random_throw_env_cfg = {
 four_tray_throw_env_cfg = {
   **base_cfg,
   
-  'environment' : (lambda : FourTrayThrowEnv(max_steps=60, render=True, randomize_objects=False, trajectory_length=35, target_min_dist=0.1, trays_center=[0.4, 0.0], trays_stride=[0.15, 0.15])),
+  'environment' : (lambda : FourTrayThrowEnv(max_steps=60, render=False, randomize_objects=False, trajectory_length=35, target_min_dist=0.1, trays_center=[0.4, 0.0], trays_stride=[0.15, 0.15])),
   
   # ---- NET/TF CONFIG ----
   'adam_actor_alpha' : StepLambda(lambda step: 3e-4 * (1.0 - step / 1e6)),

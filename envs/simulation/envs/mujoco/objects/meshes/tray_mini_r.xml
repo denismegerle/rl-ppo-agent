@@ -1,0 +1,11 @@
+<mujoco model="tray">
+  <worldbody>
+         <body name="tray_body_r" pos="0.55 0.15 0.0" quat="0.0 0 0 0">
+             <geom mass="2000" pos="0 0 0.02" rgba="1 0 0 1" size="0.1 0.1 0.005" type="box" />
+             <geom pos="0 0.1 0.06" rgba="1 0 0 1" size="0.1 0.01 0.06" type="box" />
+             <geom pos="0 -0.1 0.06" rgba="1 0 0 1" size="0.1 0.01 0.06" type="box" />
+             <geom pos="0.1 0 0.06" rgba="1 0 0 1" size="0.01 0.1 0.06" type="box" />
+             <geom pos="-0.1 0 0.06" rgba="1 0 0 1" size="0.01 0.1 0.06" type="box" />
+         </body>
+  </worldbody>
+</mujoco>

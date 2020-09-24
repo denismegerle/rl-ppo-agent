@@ -236,8 +236,6 @@ class Agent(object):
           reg_loss_critic = self.cfg['critic_regloss_factor'] * self._reg_loss(self.critic)
           critic_loss = value_loss + reg_loss_critic
           
-          loss = actor_loss + critic_loss
-          
           # tensorboard logging
           self.tb_actor_loss(actor_loss)
           self.tb_ppo_loss(ppo_clip_loss)
@@ -247,19 +245,17 @@ class Agent(object):
           self.tb_critic_loss(critic_loss)
           self.tb_value_loss(value_loss)
           self.tb_critic_regloss(reg_loss_critic)
-        
-        trainable_variables_policy = self.actor.trainable_variables
-        trainable_variables_critic = self.critic.trainable_variables
-        
-        if not self.discrete:
-          trainable_variables_policy += [self.log_std_stateless]
           
-        gradient = tape.gradient(loss, trainable_variables_policy)
+        if not self.discrete:
+          gradient = tape.gradient(actor_loss, [self.log_std_stateless])
+          self.actor_optimizer.apply_gradients(zip(gradient, [self.log_std_stateless]))
+
+        gradient = tape.gradient(actor_loss, self.actor.trainable_variables)
         gradient, _ = tf.clip_by_global_norm(gradient, clip_norm=self.cfg['clip_policy_gradient_norm'])
-        self.actor_optimizer.apply_gradients(zip(gradient, trainable_variables_policy))
+        self.actor_optimizer.apply_gradients(zip(gradient, self.actor.trainable_variables))
         
-        gradient = tape.gradient(critic_loss, trainable_variables_critic)
-        self.critic_optimizer.apply_gradients(zip(gradient, trainable_variables_critic))
+        gradient = tape.gradient(critic_loss, self.critic.trainable_variables)
+        self.critic_optimizer.apply_gradients(zip(gradient, self.critic.trainable_variables))
   
   def train(self):
     # calculate returns and advantages
