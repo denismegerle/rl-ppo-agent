@@ -166,7 +166,7 @@ class Agent(object):
     surrogate1 = ratio * advantage
     surrogate2 = clip_ratio * advantage
     
-    return - K.mean(K.minimum(surrogate1, surrogate2))
+    return K.mean(K.minimum(surrogate1, surrogate2))
   
   def _value_loss(self, values, values_old, returns):
     clipped_vest = K.clip(values, min_value=values_old - self.cfg['vest_clip'](self.step), max_value=values_old + self.cfg['vest_clip'](self.step))
@@ -174,7 +174,7 @@ class Agent(object):
     surrogate1 = K.square(values - returns)
     surrogate2 = K.square(clipped_vest - returns)
 
-    return K.mean(K.maximum(surrogate1, surrogate2))
+    return - K.mean(K.minimum(surrogate1, surrogate2))
   
   def _entropy_loss(self, mu, log_std):
     return - K.mean(self._get_dist(mu, log_std).entropy())
@@ -327,7 +327,7 @@ class Agent(object):
     
     for self.step in tqdm(range(self.cfg['total_steps'])):
       # choose and take an action, advance environment and store data
-      #self.env.render()
+      self.env.render()
       observations.append(self.env.unnormalize_obs(s))
 
       scaled_a, unscaled_a, a_dist = self.actor_choose(s)
@@ -367,5 +367,5 @@ if __name__ == "__main__":
   
   gpu = '/device:GPU:0'
   with tf.device(gpu):
-    agt_cfg = _cfg.four_tray_throw_env_cfg
+    agt_cfg = _cfg.reaching_dot_cfg
     Agent(cfg=agt_cfg).learn()
