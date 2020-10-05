@@ -35,20 +35,11 @@
   - [x] stateless logstd and clip ratio
 
 - [x] remove prints in terminals, only use a progressbar and tensorboard for the rest
-- [ ] provide configs / gifs for some environments
-  - ...
+- [x] provide configs / gifs for some environments
 - [x] compile seeds together for replicability
 - [x] run_env file that loads model, runs env and prints reward + video if possible
 - [ ] force types in parameters
 - [ ] code point references to the optimizations made
-
-
-
- 
-
--- rest:
-- comment the agent...
-- embed gifs of working agents + learning rates/adv/rewards per step/episode for different tasks
 
 
 
@@ -91,11 +82,6 @@
 - mujoco_py's offscreen rendering is buggy in gym, for using run_model (GIF generation)
   - adjust mujoco_py.MjRenderContextOffscreen(sim, None, device_id=0) in gym/envs/mujoco/mujoco_env.MujocoEnv._get_viewer(...)
 
-
-
-## Things...
-
-- generate batches of size N, each element containing [X = sequence of states, Y = action to take now]
 
 
 ## References
